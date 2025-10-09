@@ -1,3 +1,5 @@
+import 'payment.dart';
+
 class Student {
   final String id;
   final String? userId;
@@ -16,6 +18,7 @@ class Student {
   final String? notes;
   final String? phone;
   final String? email;
+  final double coursePrice;
 
   Student({
     required this.id,
@@ -35,6 +38,7 @@ class Student {
     this.notes,
     this.phone,
     this.email,
+    this.coursePrice = 3200.00,
   });
 
   factory Student.fromJson(Map<String, dynamic> json) {
@@ -60,6 +64,7 @@ class Student {
       notes: json['notes'],
       phone: json['phone'],
       email: json['email'],
+      coursePrice: (json['course_price'] as num?)?.toDouble() ?? 3200.00,
     );
   }
 
@@ -69,5 +74,18 @@ class Student {
   int? get courseDurationDays {
     if (courseStartDate == null) return null;
     return DateTime.now().difference(courseStartDate!).inDays;
+  }
+
+  // Oblicz sumę płatności za kurs
+  double calculateCoursePaid(List<Payment> payments) {
+    return payments
+        .where((p) => p.type == 'course')
+        .fold(0.0, (sum, p) => sum + p.amount);
+  }
+
+  // Oblicz zaległość
+  double calculateOutstanding(List<Payment> payments) {
+    final paid = calculateCoursePaid(payments);
+    return coursePrice - paid;
   }
 }

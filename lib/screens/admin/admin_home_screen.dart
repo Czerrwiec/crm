@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 import '../../services/auth_service.dart';
 import '../../services/student_service.dart';
-import '../../models/student.dart';
 import '../../models/student_display.dart';
 import '../../models/list_settings.dart';
+import '../student/student_detail_screen.dart';
 
 class AdminHomeScreen extends StatefulWidget {
   const AdminHomeScreen({super.key});
@@ -18,10 +18,13 @@ class _AdminHomeScreenState extends State<AdminHomeScreen> {
   List<StudentDisplay> _filteredStudents = [];
   bool _isLoading = true;
   String _searchQuery = '';
-  
+
   // Sortowanie i kolumny
   SortOption _sortOption = SortOption.lastName;
-  Set<DisplayColumn> _selectedColumns = {DisplayColumn.phone, DisplayColumn.activeOnly}; //domyślne kolumny
+  Set<DisplayColumn> _selectedColumns = {
+    DisplayColumn.phone,
+    DisplayColumn.activeOnly,
+  }; //domyślne kolumny
 
   @override
   void initState() {
@@ -34,14 +37,16 @@ class _AdminHomeScreenState extends State<AdminHomeScreen> {
     try {
       final response = await _studentService.getStudentsWithInstructors();
       setState(() {
-        _allStudents = response.map((json) => StudentDisplay.fromJson(json)).toList();
+        _allStudents = response
+            .map((json) => StudentDisplay.fromJson(json))
+            .toList();
         _applyFiltersAndSort();
       });
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Błąd: $e')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Błąd: $e')));
       }
     } finally {
       setState(() => _isLoading = false);
@@ -52,9 +57,10 @@ class _AdminHomeScreenState extends State<AdminHomeScreen> {
     // Filtrowanie
     var filtered = _allStudents.where((studentDisplay) {
       final student = studentDisplay.student;
-      
+
       // Filtr "Tylko aktywni"
-      if (_selectedColumns.contains(DisplayColumn.activeOnly) && !student.active) {
+      if (_selectedColumns.contains(DisplayColumn.activeOnly) &&
+          !student.active) {
         return false;
       }
 
@@ -62,9 +68,11 @@ class _AdminHomeScreenState extends State<AdminHomeScreen> {
       if (_searchQuery.isNotEmpty) {
         final query = _searchQuery.toLowerCase();
         final matchesName = student.fullName.toLowerCase().contains(query);
-        final matchesPhone = student.phone?.toLowerCase().contains(query) ?? false;
-        final matchesPkk = student.pkkNumber?.toLowerCase().contains(query) ?? false;
-        
+        final matchesPhone =
+            student.phone?.toLowerCase().contains(query) ?? false;
+        final matchesPkk =
+            student.pkkNumber?.toLowerCase().contains(query) ?? false;
+
         if (!matchesName && !matchesPhone && !matchesPkk) {
           return false;
         }
@@ -147,7 +155,7 @@ class _AdminHomeScreenState extends State<AdminHomeScreen> {
                   ),
                 ),
                 const SizedBox(width: 12),
-                
+
                 // Sortowanie
                 Expanded(
                   child: DropdownButtonFormField<SortOption>(
@@ -159,7 +167,10 @@ class _AdminHomeScreenState extends State<AdminHomeScreen> {
                     items: SortOption.values.map((option) {
                       return DropdownMenuItem(
                         value: option,
-                        child: Text(option.label, overflow: TextOverflow.ellipsis),
+                        child: Text(
+                          option.label,
+                          overflow: TextOverflow.ellipsis,
+                        ),
                       );
                     }).toList(),
                     onChanged: (value) {
@@ -173,7 +184,7 @@ class _AdminHomeScreenState extends State<AdminHomeScreen> {
                   ),
                 ),
                 const SizedBox(width: 12),
-                
+
                 // Kolumny
                 OutlinedButton.icon(
                   onPressed: _showColumnsDialog,
@@ -189,41 +200,52 @@ class _AdminHomeScreenState extends State<AdminHomeScreen> {
             child: _isLoading
                 ? const Center(child: CircularProgressIndicator())
                 : _filteredStudents.isEmpty
-                    ? const Center(child: Text('Brak kursantów'))
-                    : ListView.builder(
-                        itemCount: _filteredStudents.length,
-                        itemBuilder: (context, index) {
-                          final studentDisplay = _filteredStudents[index];
-                          final student = studentDisplay.student;
-                          
-                          return Card(
-                            margin: const EdgeInsets.symmetric(
-                              horizontal: 16,
-                              vertical: 4,
+                ? const Center(child: Text('Brak kursantów'))
+                : ListView.builder(
+                    itemCount: _filteredStudents.length,
+                    itemBuilder: (context, index) {
+                      final studentDisplay = _filteredStudents[index];
+                      final student = studentDisplay.student;
+
+                      return Card(
+                        margin: const EdgeInsets.symmetric(
+                          horizontal: 16,
+                          vertical: 4,
+                        ),
+                        // Wyszarzenie nieaktywnych
+                        color: student.active ? null : Colors.grey.shade200,
+                        child: ListTile(
+                          leading: CircleAvatar(
+                            backgroundColor: student.active
+                                ? null
+                                : Colors.grey,
+                            child: Text(student.firstName[0]),
+                          ),
+                          title: Text(
+                            student.fullName,
+                            style: TextStyle(
+                              color: student.active
+                                  ? null
+                                  : Colors.grey.shade600,
                             ),
-                            // Wyszarzenie nieaktywnych
-                            color: student.active ? null : Colors.grey.shade200,
-                            child: ListTile(
-                              leading: CircleAvatar(
-                                backgroundColor: student.active ? null : Colors.grey,
-                                child: Text(student.firstName[0]),
+                          ),
+                          subtitle: _buildSubtitle(studentDisplay),
+                          onTap: () async {
+                            await Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (context) =>
+                                    StudentDetailScreen(student: student),
                               ),
-                              title: Text(
-                                student.fullName,
-                                style: TextStyle(
-                                  color: student.active ? null : Colors.grey.shade600,
-                                ),
-                              ),
-                              subtitle: _buildSubtitle(studentDisplay),
-                              onTap: () {
-                                ScaffoldMessenger.of(context).showSnackBar(
-                                  SnackBar(content: Text('Szczegóły: ${student.fullName}')),
-                                );
-                              },
-                            ),
-                          );
-                        },
-                      ),
+                            );
+
+                            // Zawsze odśwież po powrocie
+                            _loadStudents();
+                          },
+                        ),
+                      );
+                    },
+                  ),
           ),
         ],
       ),
@@ -235,28 +257,33 @@ class _AdminHomeScreenState extends State<AdminHomeScreen> {
     final student = studentDisplay.student;
     final lines = <String>[];
 
-    if (_selectedColumns.contains(DisplayColumn.phone) && student.phone != null) {
+    if (_selectedColumns.contains(DisplayColumn.phone) &&
+        student.phone != null) {
       lines.add('${student.phone}');
     }
-    if (_selectedColumns.contains(DisplayColumn.email) && student.email != null) {
+    if (_selectedColumns.contains(DisplayColumn.email) &&
+        student.email != null) {
       lines.add('✉️ ${student.email}');
     }
-    if (_selectedColumns.contains(DisplayColumn.pkk) && student.pkkNumber != null) {
+    if (_selectedColumns.contains(DisplayColumn.pkk) &&
+        student.pkkNumber != null) {
       lines.add('PKK: ${student.pkkNumber}');
     }
     if (_selectedColumns.contains(DisplayColumn.theoryPassed)) {
       lines.add('Teoria: ${student.theoryPassed ? "✅ Zdana" : "❌ Nie zdana"}');
     }
     if (_selectedColumns.contains(DisplayColumn.coursePaid)) {
-      lines.add('Kurs: ${student.coursePaid ? "✅ Opłacony" : "❌ Nie opłacony"}');
+      lines.add('Kurs: ${student.coursePaid ? "✅ Opłacony" : "❌ Nieopłacony"}');
     }
     if (_selectedColumns.contains(DisplayColumn.hoursDriven)) {
       lines.add('🚗 ${student.totalHoursDriven}h');
     }
-    if (_selectedColumns.contains(DisplayColumn.instructor) && studentDisplay.instructorName != null) {
+    if (_selectedColumns.contains(DisplayColumn.instructor) &&
+        studentDisplay.instructorName != null) {
       lines.add('👨‍🏫 ${studentDisplay.instructorName}');
     }
-    if (_selectedColumns.contains(DisplayColumn.courseDuration) && student.courseDurationDays != null) {
+    if (_selectedColumns.contains(DisplayColumn.courseDuration) &&
+        student.courseDurationDays != null) {
       lines.add('📅 ${student.courseDurationDays} dni');
     }
 
@@ -264,10 +291,7 @@ class _AdminHomeScreenState extends State<AdminHomeScreen> {
       return null;
     }
 
-    return Text(
-      lines.join(' • '),
-      style: const TextStyle(fontSize: 13),
-    );
+    return Text(lines.join(' • '), style: const TextStyle(fontSize: 13));
   }
 }
 
