@@ -3,6 +3,8 @@ import '../../models/student.dart';
 import '../../models/payment.dart';
 import '../../services/payment_service.dart';
 import '../../services/student_service.dart';
+import '../../services/instructor_service.dart';
+import '../../models/app_user.dart';
 
 class StudentDetailScreen extends StatefulWidget {
   final Student student;
@@ -23,10 +25,73 @@ class _StudentDetailScreenState extends State<StudentDetailScreen> {
   List<Payment> _payments = [];
   bool _isLoadingPayments = true;
 
+  final _instructorService = InstructorService();
+  List<AppUser> _instructors = [];
+  bool _isLoadingInstructors = true;
+  bool _isEditing = false;
+
+  // Kontrolery formularza
+  late TextEditingController _firstNameController;
+  late TextEditingController _lastNameController;
+  late TextEditingController _phoneController;
+  late TextEditingController _emailController;
+  late TextEditingController _pkkController;
+  late TextEditingController _coursePriceController;
+  late TextEditingController _notesController;
+  late TextEditingController _cityController;
+
+  // Stan checkboxów
+  late bool _theoryPassed;
+  late bool _internalExamPassed;
+  late bool _active;
+  late bool _isSupplementaryCourse;
+
+  // Wybrany instruktor
+  String? _selectedInstructorId;
+
   @override
   void initState() {
     super.initState();
+
+    // Inicjalizuj kontrolery z danymi kursanta
+    _firstNameController = TextEditingController(
+      text: widget.student.firstName,
+    );
+    _lastNameController = TextEditingController(text: widget.student.lastName);
+    _phoneController = TextEditingController(text: widget.student.phone ?? '');
+    _emailController = TextEditingController(text: widget.student.email ?? '');
+    _pkkController = TextEditingController(
+      text: widget.student.pkkNumber ?? '',
+    );
+    _coursePriceController = TextEditingController(
+      text: widget.student.coursePrice.toStringAsFixed(2),
+    );
+    _notesController = TextEditingController(text: widget.student.notes ?? '');
+    _cityController = TextEditingController(text: widget.student.city ?? '');
+    _isSupplementaryCourse = widget.student.isSupplementaryCourse;
+
+    // Inicjalizuj checkboxy
+    _theoryPassed = widget.student.theoryPassed;
+    _internalExamPassed = widget.student.internalExamPassed;
+    _active = widget.student.active;
+
+    // Wybrany instruktor
+    _selectedInstructorId = widget.student.instructorId;
+
     _loadPayments();
+    _loadInstructors();
+  }
+
+  void dispose() {
+    _firstNameController.dispose();
+    _lastNameController.dispose();
+    _phoneController.dispose();
+    _emailController.dispose();
+    _pkkController.dispose();
+    _coursePriceController.dispose();
+    _notesController.dispose();
+    _cityController.dispose();
+    super.dispose();
   }
 
   Future<void> _loadPayments() async {
@@ -44,6 +109,22 @@ class _StudentDetailScreenState extends State<StudentDetailScreen> {
       }
     } finally {
       setState(() => _isLoadingPayments = false);
+    }
+  }
+
+  Future<void> _loadInstructors() async {
+    setState(() => _isLoadingInstructors = true);
+    try {
+      final instructors = await _instructorService.getInstructors();
+      setState(() => _instructors = instructors);
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Błąd ładowania instruktorów: $e')),
+        );
+      }
+    } finally {
+      setState(() => _isLoadingInstructors = false);
     }
   }
 
@@ -85,17 +166,261 @@ class _StudentDetailScreenState extends State<StudentDetailScreen> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           // Podstawowe dane (placeholder - następny krok)
+          // Formularz edycji danych
+          // Formularz/widok danych
           Card(
             child: Padding(
               padding: const EdgeInsets.all(16),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text('Imię: ${widget.student.firstName}'),
-                  Text('Nazwisko: ${widget.student.lastName}'),
-                  Text('Telefon: ${widget.student.phone ?? "brak"}'),
-                  Text('Email: ${widget.student.email ?? "brak"}'),
-                  Text('PKK: ${widget.student.pkkNumber ?? "brak"}'),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text(
+                        'Dane personalne',
+                        style: Theme.of(context).textTheme.titleMedium,
+                      ),
+                      if (!_isEditing)
+                        ElevatedButton.icon(
+                          onPressed: () {
+                            setState(() {
+                              _isEditing = true;
+                            });
+                          },
+                          icon: const Icon(Icons.edit, size: 18),
+                          label: const Text('Edytuj'),
+                        ),
+                    ],
+                  ),
+                  const SizedBox(height: 16),
+
+                  // Imię i Nazwisko
+                  Row(
+                    children: [
+                      Expanded(
+                        child: TextField(
+                          controller: _firstNameController,
+                          decoration: const InputDecoration(
+                            labelText: 'Imię *',
+                            border: OutlineInputBorder(),
+                          ),
+                          enabled: _isEditing,
+                        ),
+                      ),
+                      const SizedBox(width: 16),
+                      Expanded(
+                        child: TextField(
+                          controller: _lastNameController,
+                          decoration: const InputDecoration(
+                            labelText: 'Nazwisko *',
+                            border: OutlineInputBorder(),
+                          ),
+                          enabled: _isEditing,
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 16),
+
+                  // Telefon i Email
+                  Row(
+                    children: [
+                      Expanded(
+                        child: TextField(
+                          controller: _phoneController,
+                          decoration: const InputDecoration(
+                            labelText: 'Telefon',
+                            border: OutlineInputBorder(),
+                            prefixIcon: Icon(Icons.phone),
+                          ),
+                          keyboardType: TextInputType.phone,
+                          enabled: _isEditing,
+                        ),
+                      ),
+                      const SizedBox(width: 16),
+                      Expanded(
+                        child: TextField(
+                          controller: _emailController,
+                          decoration: const InputDecoration(
+                            labelText: 'Email',
+                            border: OutlineInputBorder(),
+                            prefixIcon: Icon(Icons.email),
+                          ),
+                          keyboardType: TextInputType.emailAddress,
+                          enabled: _isEditing,
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 16),
+
+                  // PKK i Miasto
+                  Row(
+                    children: [
+                      Expanded(
+                        child: TextField(
+                          controller: _pkkController,
+                          decoration: const InputDecoration(
+                            labelText: 'Numer PKK',
+                            border: OutlineInputBorder(),
+                          ),
+                          enabled: _isEditing,
+                        ),
+                      ),
+                      const SizedBox(width: 16),
+                      Expanded(
+                        child: TextField(
+                          controller: _cityController,
+                          decoration: const InputDecoration(
+                            labelText: 'Miasto zdawania',
+                            border: OutlineInputBorder(),
+                            prefixIcon: Icon(Icons.location_city),
+                          ),
+                          enabled: _isEditing,
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 16),
+
+                  // Cena kursu
+                  TextField(
+                    controller: _coursePriceController,
+                    decoration: const InputDecoration(
+                      labelText: 'Cena kursu (zł) *',
+                      border: OutlineInputBorder(),
+                      prefixIcon: Icon(Icons.attach_money),
+                    ),
+                    keyboardType: const TextInputType.numberWithOptions(
+                      decimal: true,
+                    ),
+                    enabled: _isEditing,
+                  ),
+                  const SizedBox(height: 16),
+
+                  // Dropdown instruktora
+                  _isLoadingInstructors
+                      ? const CircularProgressIndicator()
+                      : DropdownButtonFormField<String>(
+                          value: _selectedInstructorId,
+                          decoration: const InputDecoration(
+                            labelText: 'Instruktor *',
+                            border: OutlineInputBorder(),
+                            prefixIcon: Icon(Icons.person),
+                          ),
+                          items: _instructors.map((instructor) {
+                            return DropdownMenuItem(
+                              value: instructor.id,
+                              child: Text(instructor.fullName),
+                            );
+                          }).toList(),
+                          onChanged: _isEditing
+                              ? (value) {
+                                  setState(() {
+                                    _selectedInstructorId = value;
+                                  });
+                                }
+                              : null,
+                        ),
+                  const SizedBox(height: 16),
+
+                  // Checkboxy
+                  CheckboxListTile(
+                    title: const Text('Teoria zdana'),
+                    value: _theoryPassed,
+                    onChanged: _isEditing
+                        ? (value) {
+                            setState(() {
+                              _theoryPassed = value ?? false;
+                            });
+                          }
+                        : null,
+                    controlAffinity: ListTileControlAffinity.leading,
+                    contentPadding: EdgeInsets.zero,
+                  ),
+                  CheckboxListTile(
+                    title: const Text('Egzamin wewnętrzny zdany'),
+                    value: _internalExamPassed,
+                    onChanged: _isEditing
+                        ? (value) {
+                            setState(() {
+                              _internalExamPassed = value ?? false;
+                            });
+                          }
+                        : null,
+                    controlAffinity: ListTileControlAffinity.leading,
+                    contentPadding: EdgeInsets.zero,
+                  ),
+                  CheckboxListTile(
+                    title: const Text('Kurs uzupełniający'),
+                    value: _isSupplementaryCourse,
+                    onChanged: _isEditing
+                        ? (value) {
+                            setState(() {
+                              _isSupplementaryCourse = value ?? false;
+                            });
+                          }
+                        : null,
+                    controlAffinity: ListTileControlAffinity.leading,
+                    contentPadding: EdgeInsets.zero,
+                  ),
+                  CheckboxListTile(
+                    title: const Text('Kursant aktywny'),
+                    value: _active,
+                    onChanged: _isEditing
+                        ? (value) {
+                            setState(() {
+                              _active = value ?? true;
+                            });
+                          }
+                        : null,
+                    controlAffinity: ListTileControlAffinity.leading,
+                    contentPadding: EdgeInsets.zero,
+                  ),
+                  const SizedBox(height: 16),
+
+                  // Notatki
+                  TextField(
+                    controller: _notesController,
+                    decoration: const InputDecoration(
+                      labelText: 'Notatki',
+                      border: OutlineInputBorder(),
+                      alignLabelWithHint: true,
+                    ),
+                    maxLines: 3,
+                    enabled: _isEditing,
+                  ),
+
+                  // Przyciski Zapisz/Anuluj (tylko w trybie edycji)
+                  if (_isEditing) ...[
+                    const SizedBox(height: 24),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: OutlinedButton.icon(
+                            onPressed: _cancelEditing,
+                            icon: const Icon(Icons.close),
+                            label: const Text('Anuluj'),
+                            style: OutlinedButton.styleFrom(
+                              padding: const EdgeInsets.all(16),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 16),
+                        Expanded(
+                          child: ElevatedButton.icon(
+                            onPressed: _saveChanges,
+                            icon: const Icon(Icons.save),
+                            label: const Text('Zapisz'),
+                            style: ElevatedButton.styleFrom(
+                              padding: const EdgeInsets.all(16),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
                 ],
               ),
             ),
@@ -613,6 +938,114 @@ class _StudentDetailScreenState extends State<StudentDetailScreen> {
             context,
           ).showSnackBar(SnackBar(content: Text('Błąd: $e')));
         }
+      }
+    }
+  }
+
+  // Anuluj edycję - przywróć oryginalne wartości
+  void _cancelEditing() {
+    setState(() {
+      _firstNameController.text = widget.student.firstName;
+      _lastNameController.text = widget.student.lastName;
+      _phoneController.text = widget.student.phone ?? '';
+      _emailController.text = widget.student.email ?? '';
+      _pkkController.text = widget.student.pkkNumber ?? '';
+      _cityController.text = widget.student.city ?? '';
+      _coursePriceController.text = widget.student.coursePrice.toStringAsFixed(
+        2,
+      );
+      _notesController.text = widget.student.notes ?? '';
+
+      _theoryPassed = widget.student.theoryPassed;
+      _internalExamPassed = widget.student.internalExamPassed;
+      _isSupplementaryCourse = widget.student.isSupplementaryCourse;
+      _active = widget.student.active;
+      _selectedInstructorId = widget.student.instructorId;
+
+      _isEditing = false;
+    });
+  }
+
+  // Zapisz zmiany
+  Future<void> _saveChanges() async {
+    // Walidacja
+    if (_firstNameController.text.trim().isEmpty) {
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('Imię jest wymagane')));
+      return;
+    }
+
+    if (_lastNameController.text.trim().isEmpty) {
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('Nazwisko jest wymagane')));
+      return;
+    }
+
+    if (_selectedInstructorId == null) {
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('Wybierz instruktora')));
+      return;
+    }
+
+    final coursePrice = double.tryParse(_coursePriceController.text.trim());
+    if (coursePrice == null || coursePrice <= 0) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Wprowadź poprawną cenę kursu')),
+      );
+      return;
+    }
+
+    try {
+      final data = {
+        'first_name': _firstNameController.text.trim(),
+        'last_name': _lastNameController.text.trim(),
+        'phone': _phoneController.text.trim().isEmpty
+            ? null
+            : _phoneController.text.trim(),
+        'email': _emailController.text.trim().isEmpty
+            ? null
+            : _emailController.text.trim(),
+        'pkk_number': _pkkController.text.trim().isEmpty
+            ? null
+            : _pkkController.text.trim(),
+        'city': _cityController.text.trim().isEmpty
+            ? null
+            : _cityController.text.trim(),
+        'instructor_id': _selectedInstructorId,
+        'course_price': coursePrice,
+        'theory_passed': _theoryPassed,
+        'internal_exam_passed': _internalExamPassed,
+        'is_supplementary_course': _isSupplementaryCourse,
+        'notes': _notesController.text.trim().isEmpty
+            ? null
+            : _notesController.text.trim(),
+      };
+
+      await StudentService().updateStudent(widget.student.id, data);
+
+      // Wywołaj callback żeby odświeżyć listę
+      widget.onStudentUpdated?.call();
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Zmiany zapisane'),
+            backgroundColor: Colors.green,
+          ),
+        );
+      }
+      setState(() {
+        _isEditing = false; // ✅ Wyłącz tryb edycji
+      });
+      
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Błąd: $e')));
       }
     }
   }

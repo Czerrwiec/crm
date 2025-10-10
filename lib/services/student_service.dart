@@ -55,4 +55,12 @@ class StudentService {
     studentData['course_paid'] = newCoursePaidStatus;
     return Student.fromJson(studentData);
   }
+
+  // Zaktualizuj dane kursanta
+  Future<void> updateStudent(
+    String studentId,
+    Map<String, dynamic> data,
+  ) async {
+    await _supabase.from('students').update(data).eq('id', studentId);
+  }
 }
