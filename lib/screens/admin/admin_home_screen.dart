@@ -20,11 +20,9 @@ class _AdminHomeScreenState extends State<AdminHomeScreen> {
   String _searchQuery = '';
 
   // Sortowanie i kolumny
-  SortOption _sortOption = SortOption.lastName;
-  Set<DisplayColumn> _selectedColumns = {
-    DisplayColumn.phone,
-    DisplayColumn.activeOnly,
-  }; //domyślne kolumny
+  SortOption _sortOption = SortOption.lastNameAsc;
+  Set<DisplayColumn> _selectedColumns = {DisplayColumn.phone};
+  Set<FilterOption> _selectedFilters = {};
 
   @override
   void initState() {
@@ -58,9 +56,27 @@ class _AdminHomeScreenState extends State<AdminHomeScreen> {
     var filtered = _allStudents.where((studentDisplay) {
       final student = studentDisplay.student;
 
-      // Filtr "Tylko aktywni"
-      if (_selectedColumns.contains(DisplayColumn.activeOnly) &&
+      // Filtr "Nieaktwyni"
+      if (!_selectedFilters.contains(FilterOption.showInactive) &&
           !student.active) {
+        return false;
+      }
+
+      // Filtr "Teoria zdana"
+      if (_selectedFilters.contains(FilterOption.theoryPassed) &&
+          !student.theoryPassed) {
+        return false;
+      }
+
+      // Filtr "Kurs opłacony"
+      if (_selectedFilters.contains(FilterOption.coursePaid) &&
+          !student.coursePaid) {
+        return false;
+      }
+
+      // Filtr "Kurs nieopłacony"
+      if (_selectedFilters.contains(FilterOption.courseUnpaid) &&
+          student.coursePaid) {
         return false;
       }
 
@@ -84,14 +100,22 @@ class _AdminHomeScreenState extends State<AdminHomeScreen> {
     // Sortowanie
     filtered.sort((a, b) {
       switch (_sortOption) {
-        case SortOption.lastName:
+        case SortOption.lastNameAsc:
           return a.student.lastName.compareTo(b.student.lastName);
-        case SortOption.firstName:
+        case SortOption.lastNameDesc:
+          return b.student.lastName.compareTo(a.student.lastName);
+        case SortOption.firstNameAsc:
           return a.student.firstName.compareTo(b.student.firstName);
-        case SortOption.courseDuration:
-          final aDays = a.student.courseDurationDays ?? 0;
-          final bDays = b.student.courseDurationDays ?? 0;
-          return bDays.compareTo(aDays); // Malejąco
+        case SortOption.firstNameDesc:
+          return b.student.firstName.compareTo(a.student.firstName);
+        case SortOption.courseStartAsc:
+          final aDate = a.student.courseStartDate ?? DateTime(1900);
+          final bDate = b.student.courseStartDate ?? DateTime(1900);
+          return aDate.compareTo(bDate);
+        case SortOption.courseStartDesc:
+          final aDate = a.student.courseStartDate ?? DateTime(1900);
+          final bDate = b.student.courseStartDate ?? DateTime(1900);
+          return bDate.compareTo(aDate);
       }
     });
 
@@ -115,6 +139,20 @@ class _AdminHomeScreenState extends State<AdminHomeScreen> {
     }
   }
 
+  Future<void> _showFiltersDialog() async {
+    final result = await showDialog<Set<FilterOption>>(
+      context: context,
+      builder: (context) => _FiltersDialog(selectedFilters: _selectedFilters),
+    );
+
+    if (result != null) {
+      setState(() {
+        _selectedFilters = result;
+        _applyFiltersAndSort();
+      });
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -131,6 +169,7 @@ class _AdminHomeScreenState extends State<AdminHomeScreen> {
       ),
       body: Column(
         children: [
+          // Pasek filtrów
           // Pasek filtrów
           Padding(
             padding: const EdgeInsets.all(16),
@@ -181,6 +220,40 @@ class _AdminHomeScreenState extends State<AdminHomeScreen> {
                         });
                       }
                     },
+                  ),
+                ),
+                const SizedBox(width: 12),
+                // Filtry
+                OutlinedButton.icon(
+                  onPressed: _showFiltersDialog,
+                  icon: const Icon(Icons.filter_list),
+                  label: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const Text('Filtry'),
+                      if (_selectedFilters.isNotEmpty)
+                        Container(
+                          margin: const EdgeInsets.only(left: 8),
+                          padding: const EdgeInsets.all(4),
+                          decoration: BoxDecoration(
+                            color: Colors.blue.shade700,
+                            shape: BoxShape.circle,
+                          ),
+                          constraints: const BoxConstraints(
+                            minWidth: 16,
+                            minHeight: 16,
+                          ),
+                          child: Text(
+                            '${_selectedFilters.length}',
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 10,
+                              fontWeight: FontWeight.bold,
+                            ),
+                            textAlign: TextAlign.center,
+                          ),
+                        ),
+                    ],
                   ),
                 ),
                 const SizedBox(width: 12),
@@ -258,7 +331,7 @@ class _AdminHomeScreenState extends State<AdminHomeScreen> {
 
     if (_selectedColumns.contains(DisplayColumn.phone) &&
         student.phone != null) {
-      lines.add('${student.phone}');
+      lines.add('📱 ${student.phone}');
     }
     if (_selectedColumns.contains(DisplayColumn.email) &&
         student.email != null) {
@@ -267,12 +340,6 @@ class _AdminHomeScreenState extends State<AdminHomeScreen> {
     if (_selectedColumns.contains(DisplayColumn.pkk) &&
         student.pkkNumber != null) {
       lines.add('PKK: ${student.pkkNumber}');
-    }
-    if (_selectedColumns.contains(DisplayColumn.theoryPassed)) {
-      lines.add('Teoria: ${student.theoryPassed ? "✅ Zdana" : "❌ Nie zdana"}');
-    }
-    if (_selectedColumns.contains(DisplayColumn.coursePaid)) {
-      lines.add('Kurs: ${student.coursePaid ? "✅ Opłacony" : "❌ Nieopłacony"}');
     }
     if (_selectedColumns.contains(DisplayColumn.hoursDriven)) {
       lines.add('🚗 ${student.totalHoursDriven}h');
@@ -345,6 +412,63 @@ class _ColumnsDialogState extends State<_ColumnsDialog> {
         ElevatedButton(
           onPressed: () => Navigator.pop(context, _tempSelected),
           child: const Text('Zapisz'),
+        ),
+      ],
+    );
+  }
+}
+
+// Dialog wyboru filtrów
+class _FiltersDialog extends StatefulWidget {
+  final Set<FilterOption> selectedFilters;
+
+  const _FiltersDialog({required this.selectedFilters});
+
+  @override
+  State<_FiltersDialog> createState() => _FiltersDialogState();
+}
+
+class _FiltersDialogState extends State<_FiltersDialog> {
+  late Set<FilterOption> _tempSelected;
+
+  @override
+  void initState() {
+    super.initState();
+    _tempSelected = Set.from(widget.selectedFilters);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      title: const Text('Wybierz filtry'),
+      content: SingleChildScrollView(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: FilterOption.values.map((filter) {
+            return CheckboxListTile(
+              title: Text(filter.label),
+              value: _tempSelected.contains(filter),
+              onChanged: (checked) {
+                setState(() {
+                  if (checked == true) {
+                    _tempSelected.add(filter);
+                  } else {
+                    _tempSelected.remove(filter);
+                  }
+                });
+              },
+            );
+          }).toList(),
+        ),
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.pop(context),
+          child: const Text('Anuluj'),
+        ),
+        ElevatedButton(
+          onPressed: () => Navigator.pop(context, _tempSelected),
+          child: const Text('Zastosuj'),
         ),
       ],
     );

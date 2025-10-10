@@ -1,8 +1,11 @@
 // Opcje sortowania
 enum SortOption {
-  lastName('Nazwisko'),
-  firstName('Imię'),
-  courseDuration('Czas trwania');
+  lastNameAsc('Nazwisko ↑'),
+  lastNameDesc('Nazwisko ↓'),
+  firstNameAsc('Imię ↑'),
+  firstNameDesc('Imię ↓'),
+  courseStartAsc('Data rozpoczęcia ↑'),
+  courseStartDesc('Data rozpoczęcia ↓');
 
   final String label;
   const SortOption(this.label);
@@ -13,13 +16,20 @@ enum DisplayColumn {
   phone('Telefon'),
   email('Email'),
   pkk('PKK'),
-  theoryPassed('Teoria zdana'),
-  coursePaid('Kurs opłacony'),
   hoursDriven('Wyjeżdżone godziny'),
   instructor('Instruktor'),
-  courseDuration('Czas trwania'),
-  activeOnly('Tylko aktywni');
+  courseDuration('Czas trwania');
 
   final String label;
   const DisplayColumn(this.label);
+}
+
+enum FilterOption {
+  theoryPassed('Teoria zdana'),
+  coursePaid('Kurs opłacony'),
+  courseUnpaid('Kurs nieopłacony'),
+  showInactive('Pokaż nieaktywnych');
+
+  final String label;
+  const FilterOption(this.label);
 }

@@ -21,6 +21,7 @@ class Student {
   final double coursePrice;
   final String? city;
   final bool isSupplementaryCourse;
+  final bool car;
 
   Student({
     required this.id,
@@ -43,6 +44,7 @@ class Student {
     this.coursePrice = 3200.00,
     this.city,
     this.isSupplementaryCourse = false,
+    this.car = false,
   });
 
   factory Student.fromJson(Map<String, dynamic> json) {
@@ -71,6 +73,7 @@ class Student {
       coursePrice: (json['course_price'] as num?)?.toDouble() ?? 3200.00,
       city: json['city'],
       isSupplementaryCourse: json['is_supplementary_course'] ?? false,
+      car: json['car'] ?? false
     );
   }
 

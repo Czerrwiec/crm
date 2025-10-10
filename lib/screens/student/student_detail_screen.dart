@@ -5,6 +5,7 @@ import '../../services/payment_service.dart';
 import '../../services/student_service.dart';
 import '../../services/instructor_service.dart';
 import '../../models/app_user.dart';
+import 'package:flutter/services.dart';
 
 class StudentDetailScreen extends StatefulWidget {
   final Student student;
@@ -39,12 +40,15 @@ class _StudentDetailScreenState extends State<StudentDetailScreen> {
   late TextEditingController _coursePriceController;
   late TextEditingController _notesController;
   late TextEditingController _cityController;
+  late TextEditingController _courseStartDateController;
+  late TextEditingController _totalHoursDrivenController;
 
   // Stan checkboxów
   late bool _theoryPassed;
   late bool _internalExamPassed;
   late bool _active;
   late bool _isSupplementaryCourse;
+  late bool _car;
 
   // Wybrany instruktor
   String? _selectedInstructorId;
@@ -74,9 +78,19 @@ class _StudentDetailScreenState extends State<StudentDetailScreen> {
     _theoryPassed = widget.student.theoryPassed;
     _internalExamPassed = widget.student.internalExamPassed;
     _active = widget.student.active;
+    _car = widget.student.car;
 
     // Wybrany instruktor
     _selectedInstructorId = widget.student.instructorId;
+
+    _courseStartDateController = TextEditingController(
+      text: widget.student.courseStartDate != null
+          ? '${widget.student.courseStartDate!.day.toString().padLeft(2, '0')}.${widget.student.courseStartDate!.month.toString().padLeft(2, '0')}.${widget.student.courseStartDate!.year}'
+          : '',
+    );
+    _totalHoursDrivenController = TextEditingController(
+      text: widget.student.totalHoursDriven.toString(),
+    );
 
     _loadPayments();
     _loadInstructors();
@@ -91,6 +105,8 @@ class _StudentDetailScreenState extends State<StudentDetailScreen> {
     _coursePriceController.dispose();
     _notesController.dispose();
     _cityController.dispose();
+    _courseStartDateController.dispose();
+    _totalHoursDrivenController.dispose();
     super.dispose();
   }
 
@@ -201,22 +217,28 @@ class _StudentDetailScreenState extends State<StudentDetailScreen> {
                       Expanded(
                         child: TextField(
                           controller: _firstNameController,
-                          decoration: const InputDecoration(
+                          decoration: InputDecoration(
                             labelText: 'Imię *',
-                            border: OutlineInputBorder(),
+                            border: const OutlineInputBorder(),
                           ),
                           enabled: _isEditing,
+                          style: TextStyle(
+                            color: _isEditing ? Colors.black : Colors.black87,
+                          ),
                         ),
                       ),
                       const SizedBox(width: 16),
                       Expanded(
                         child: TextField(
                           controller: _lastNameController,
-                          decoration: const InputDecoration(
+                          decoration: InputDecoration(
                             labelText: 'Nazwisko *',
                             border: OutlineInputBorder(),
                           ),
                           enabled: _isEditing,
+                          style: TextStyle(
+                            color: _isEditing ? Colors.black : Colors.black87,
+                          ),
                         ),
                       ),
                     ],
@@ -236,6 +258,9 @@ class _StudentDetailScreenState extends State<StudentDetailScreen> {
                           ),
                           keyboardType: TextInputType.phone,
                           enabled: _isEditing,
+                          style: TextStyle(
+                            color: _isEditing ? Colors.black : Colors.black87,
+                          ),
                         ),
                       ),
                       const SizedBox(width: 16),
@@ -249,6 +274,9 @@ class _StudentDetailScreenState extends State<StudentDetailScreen> {
                           ),
                           keyboardType: TextInputType.emailAddress,
                           enabled: _isEditing,
+                          style: TextStyle(
+                            color: _isEditing ? Colors.black : Colors.black87,
+                          ),
                         ),
                       ),
                     ],
@@ -266,6 +294,9 @@ class _StudentDetailScreenState extends State<StudentDetailScreen> {
                             border: OutlineInputBorder(),
                           ),
                           enabled: _isEditing,
+                          style: TextStyle(
+                            color: _isEditing ? Colors.black : Colors.black87,
+                          ),
                         ),
                       ),
                       const SizedBox(width: 16),
@@ -278,6 +309,9 @@ class _StudentDetailScreenState extends State<StudentDetailScreen> {
                             prefixIcon: Icon(Icons.location_city),
                           ),
                           enabled: _isEditing,
+                          style: TextStyle(
+                            color: _isEditing ? Colors.black : Colors.black87,
+                          ),
                         ),
                       ),
                     ],
@@ -296,6 +330,9 @@ class _StudentDetailScreenState extends State<StudentDetailScreen> {
                       decimal: true,
                     ),
                     enabled: _isEditing,
+                    style: TextStyle(
+                      color: _isEditing ? Colors.black : Colors.black87,
+                    ),
                   ),
                   const SizedBox(height: 16),
 
@@ -308,6 +345,9 @@ class _StudentDetailScreenState extends State<StudentDetailScreen> {
                             labelText: 'Instruktor *',
                             border: OutlineInputBorder(),
                             prefixIcon: Icon(Icons.person),
+                          ),
+                          style: TextStyle(
+                            color: _isEditing ? Colors.black : Colors.black87,
                           ),
                           items: _instructors.map((instructor) {
                             return DropdownMenuItem(
@@ -366,6 +406,19 @@ class _StudentDetailScreenState extends State<StudentDetailScreen> {
                     contentPadding: EdgeInsets.zero,
                   ),
                   CheckboxListTile(
+                    title: const Text('Auto na egzamin'),
+                    value: _car,
+                    onChanged: _isEditing
+                        ? (value) {
+                            setState(() {
+                              _car = value ?? false;
+                            });
+                          }
+                        : null,
+                    controlAffinity: ListTileControlAffinity.leading,
+                    contentPadding: EdgeInsets.zero,
+                  ),
+                  CheckboxListTile(
                     title: const Text('Kursant aktywny'),
                     value: _active,
                     onChanged: _isEditing
@@ -380,6 +433,77 @@ class _StudentDetailScreenState extends State<StudentDetailScreen> {
                   ),
                   const SizedBox(height: 16),
 
+                  Row(
+                    children: [
+                      Expanded(
+                        child: TextField(
+                          controller: _courseStartDateController,
+                          decoration: InputDecoration(
+                            labelText: 'Data rozpoczęcia kursu',
+                            border: const OutlineInputBorder(),
+                            prefixIcon: const Icon(Icons.calendar_today),
+                            suffixIcon: _isEditing
+                                ? IconButton(
+                                    icon: const Icon(Icons.edit_calendar),
+                                    onPressed: () async {
+                                      final date = await showDatePicker(
+                                        context: context,
+                                        initialDate:
+                                            widget.student.courseStartDate ??
+                                            DateTime.now(),
+                                        firstDate: DateTime(2020),
+                                        lastDate: DateTime.now(),
+                                      );
+                                      if (date != null) {
+                                        setState(() {
+                                          _courseStartDateController.text =
+                                              '${date.day.toString().padLeft(2, '0')}.${date.month.toString().padLeft(2, '0')}.${date.year}';
+                                        });
+                                      }
+                                    },
+                                  )
+                                : null,
+                          ),
+                          readOnly: true,
+                          style: TextStyle(
+                            color: _isEditing ? Colors.black : Colors.black87,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 16),
+                      Expanded(
+                        child: TextField(
+                          controller: _totalHoursDrivenController,
+                          decoration: const InputDecoration(
+                            labelText: 'Godziny wyjeżdżone',
+                            border: OutlineInputBorder(),
+                            prefixIcon: Icon(Icons.access_time),
+                            suffixText: 'h',
+                          ),
+                          keyboardType: TextInputType.number,
+                          inputFormatters: [
+                            FilteringTextInputFormatter
+                                .digitsOnly, // Przyjmuje tylko cyfry
+                          ],
+                          enabled: _isEditing,
+                          style: TextStyle(
+                            color: _isEditing ? Colors.black : Colors.black87,
+                          ),
+                          onChanged: (value) {
+                            if (value.isNotEmpty) {
+                              int? parsedValue = int.tryParse(value);
+                              if (parsedValue == null) {
+                                _totalHoursDrivenController
+                                    .clear(); // Czyści, jeśli nie jest int
+                              }
+                            }
+                          },
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 16),
+
                   // Notatki
                   TextField(
                     controller: _notesController,
@@ -390,6 +514,9 @@ class _StudentDetailScreenState extends State<StudentDetailScreen> {
                     ),
                     maxLines: 3,
                     enabled: _isEditing,
+                    style: TextStyle(
+                      color: _isEditing ? Colors.black : Colors.black87,
+                    ),
                   ),
 
                   // Przyciski Zapisz/Anuluj (tylko w trybie edycji)
@@ -554,7 +681,8 @@ class _StudentDetailScreenState extends State<StudentDetailScreen> {
   Widget _buildPaymentRow(Payment payment) {
     // Sprawdź czy płatność była edytowana
     final wasEdited = payment.updatedAt != null && payment.updatedBy != null;
-    final displayDate = wasEdited ? payment.updatedAt! : payment.createdAt;
+    final displayDate = (wasEdited ? payment.updatedAt! : payment.createdAt)
+        .toLocal();
     final authorId = wasEdited ? payment.updatedBy : payment.createdBy;
     final authorLabel = wasEdited ? 'Edytowane przez' : 'Dodane przez';
 
@@ -959,8 +1087,14 @@ class _StudentDetailScreenState extends State<StudentDetailScreen> {
       _theoryPassed = widget.student.theoryPassed;
       _internalExamPassed = widget.student.internalExamPassed;
       _isSupplementaryCourse = widget.student.isSupplementaryCourse;
+      _car = widget.student.car;
       _active = widget.student.active;
       _selectedInstructorId = widget.student.instructorId;
+      _courseStartDateController.text = widget.student.courseStartDate != null
+          ? '${widget.student.courseStartDate!.day.toString().padLeft(2, '0')}.${widget.student.courseStartDate!.month.toString().padLeft(2, '0')}.${widget.student.courseStartDate!.year}'
+          : '';
+      _totalHoursDrivenController.text = widget.student.totalHoursDriven
+          .toString();
 
       _isEditing = false;
     });
@@ -998,6 +1132,21 @@ class _StudentDetailScreenState extends State<StudentDetailScreen> {
       return;
     }
 
+    DateTime? courseStartDate;
+    if (_courseStartDateController.text.trim().isNotEmpty) {
+      final parts = _courseStartDateController.text.split('.');
+      if (parts.length == 3) {
+        courseStartDate = DateTime(
+          int.parse(parts[2]), // rok
+          int.parse(parts[1]), // miesiąc
+          int.parse(parts[0]), // dzień
+        );
+      }
+    }
+
+    final totalHoursDriven =
+        int.tryParse(_totalHoursDrivenController.text.trim()) ?? 0;
+
     try {
       final data = {
         'first_name': _firstNameController.text.trim(),
@@ -1019,9 +1168,12 @@ class _StudentDetailScreenState extends State<StudentDetailScreen> {
         'theory_passed': _theoryPassed,
         'internal_exam_passed': _internalExamPassed,
         'is_supplementary_course': _isSupplementaryCourse,
+        'car': _car,
         'notes': _notesController.text.trim().isEmpty
             ? null
             : _notesController.text.trim(),
+        'course_start_date': courseStartDate?.toIso8601String(),
+        'total_hours_driven': totalHoursDriven,
       };
 
       await StudentService().updateStudent(widget.student.id, data);
@@ -1040,7 +1192,6 @@ class _StudentDetailScreenState extends State<StudentDetailScreen> {
       setState(() {
         _isEditing = false; // ✅ Wyłącz tryb edycji
       });
-      
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(
