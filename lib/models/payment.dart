@@ -5,6 +5,9 @@ class Payment {
   final String type; // 'course' lub 'extra_lessons'
   final String method; // 'cash', 'card', 'transfer'
   final DateTime createdAt;
+  final String? createdBy;
+  final String? updatedBy;
+  final DateTime? updatedAt;
 
   Payment({
     this.id,
@@ -13,6 +16,9 @@ class Payment {
     required this.type,
     required this.method,
     DateTime? createdAt,
+    this.createdBy,
+    this.updatedBy,
+    this.updatedAt,
   }) : createdAt = createdAt ?? DateTime.now();
 
   factory Payment.fromJson(Map<String, dynamic> json) {
@@ -23,6 +29,11 @@ class Payment {
       type: json['type'],
       method: json['method'],
       createdAt: DateTime.parse(json['created_at']),
+      createdBy: json['created_by'],
+      updatedBy: json['updated_by'],
+      updatedAt: json['updated_at'] != null
+          ? DateTime.parse(json['updated_at'])
+          : null,
     );
   }
 

@@ -6,8 +6,13 @@ import '../../services/student_service.dart';
 
 class StudentDetailScreen extends StatefulWidget {
   final Student student;
+  final VoidCallback? onStudentUpdated;
 
-  const StudentDetailScreen({super.key, required this.student});
+  const StudentDetailScreen({
+    super.key,
+    required this.student,
+    this.onStudentUpdated,
+  });
 
   @override
   State<StudentDetailScreen> createState() => _StudentDetailScreenState();
@@ -222,6 +227,12 @@ class _StudentDetailScreenState extends State<StudentDetailScreen> {
   }
 
   Widget _buildPaymentRow(Payment payment) {
+    // Sprawdź czy płatność była edytowana
+    final wasEdited = payment.updatedAt != null && payment.updatedBy != null;
+    final displayDate = wasEdited ? payment.updatedAt! : payment.createdAt;
+    final authorId = wasEdited ? payment.updatedBy : payment.createdBy;
+    final authorLabel = wasEdited ? 'Edytowane przez' : 'Dodane przez';
+
     return Container(
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
@@ -230,17 +241,72 @@ class _StudentDetailScreenState extends State<StudentDetailScreen> {
       child: Row(
         children: [
           Expanded(
-            flex: 2,
-            child: Text(
-              '${payment.createdAt.day.toString().padLeft(2, '0')}.${payment.createdAt.month.toString().padLeft(2, '0')}.${payment.createdAt.year}',
+            flex: 3,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  '${displayDate.day.toString().padLeft(2, '0')}.${displayDate.month.toString().padLeft(2, '0')}.${displayDate.year}',
+                  style: const TextStyle(fontWeight: FontWeight.w500),
+                ),
+                Text(
+                  '${displayDate.hour.toString().padLeft(2, '0')}:${displayDate.minute.toString().padLeft(2, '0')}',
+                  style: TextStyle(fontSize: 11, color: Colors.grey.shade600),
+                ),
+                // Info o autorze
+                FutureBuilder<String?>(
+                  future: _paymentService.getCreatedByName(authorId),
+                  builder: (context, snapshot) {
+                    if (snapshot.hasData && snapshot.data != null) {
+                      return Text(
+                        '$authorLabel: ${snapshot.data}',
+                        style: TextStyle(
+                          fontSize: 10,
+                          color: wasEdited
+                              ? Colors.orange.shade700
+                              : Colors.grey.shade500,
+                          fontStyle: wasEdited
+                              ? FontStyle.italic
+                              : FontStyle.normal,
+                        ),
+                      );
+                    }
+                    return const SizedBox.shrink();
+                  },
+                ),
+              ],
             ),
           ),
           Expanded(
             flex: 2,
-            child: Text('${payment.amount.toStringAsFixed(2)} zł'),
+            child: Text(
+              '${payment.amount.toStringAsFixed(2)} zł',
+              style: const TextStyle(fontWeight: FontWeight.w500),
+            ),
           ),
           Expanded(flex: 2, child: Text(payment.typeLabel)),
           Expanded(flex: 2, child: Text(payment.methodLabel)),
+          // Akcje (edycja/usuwanie)
+          Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              IconButton(
+                icon: const Icon(Icons.edit, size: 18),
+                onPressed: () => _showEditPaymentDialog(payment),
+                tooltip: 'Edytuj',
+                padding: EdgeInsets.zero,
+                constraints: const BoxConstraints(),
+              ),
+              const SizedBox(width: 8),
+              IconButton(
+                icon: Icon(Icons.delete, size: 18, color: Colors.red.shade400),
+                onPressed: () => _showDeletePaymentDialog(payment),
+                tooltip: 'Usuń',
+                padding: EdgeInsets.zero,
+                constraints: const BoxConstraints(),
+              ),
+            ],
+          ),
         ],
       ),
     );
@@ -346,12 +412,11 @@ class _StudentDetailScreenState extends State<StudentDetailScreen> {
                     widget.student.id,
                   );
 
-                  if (context.mounted) {
-                    // Zamknij dialog płatności
-                    Navigator.pop(context, true);
+                  // Wywołaj callback żeby odświeżyć listę w tle
+                  widget.onStudentUpdated?.call();
 
-                    // Zamknij ekran szczegółów (wraca do listy)
-                    Navigator.pop(context);
+                  if (context.mounted) {
+                    Navigator.pop(context, true); // Zamknij dialog
                   }
                 } catch (e) {
                   if (context.mounted) {
@@ -375,6 +440,179 @@ class _StudentDetailScreenState extends State<StudentDetailScreen> {
         ScaffoldMessenger.of(
           context,
         ).showSnackBar(const SnackBar(content: Text('Płatność dodana')));
+      }
+    }
+  }
+
+  // Dialog edycji płatności
+  Future<void> _showEditPaymentDialog(Payment payment) async {
+    final amountController = TextEditingController(
+      text: payment.amount.toStringAsFixed(2),
+    );
+    String selectedType = payment.type;
+    String selectedMethod = payment.method;
+
+    final result = await showDialog<bool>(
+      context: context,
+      builder: (context) => StatefulBuilder(
+        builder: (context, setDialogState) => AlertDialog(
+          title: const Text('Edytuj płatność'),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              TextField(
+                controller: amountController,
+                decoration: const InputDecoration(
+                  labelText: 'Kwota (zł)',
+                  border: OutlineInputBorder(),
+                ),
+                keyboardType: const TextInputType.numberWithOptions(
+                  decimal: true,
+                ),
+              ),
+              const SizedBox(height: 16),
+              DropdownButtonFormField<String>(
+                value: selectedType,
+                decoration: const InputDecoration(
+                  labelText: 'Typ płatności',
+                  border: OutlineInputBorder(),
+                ),
+                items: const [
+                  DropdownMenuItem(value: 'course', child: Text('Kurs')),
+                  DropdownMenuItem(
+                    value: 'extra_lessons',
+                    child: Text('Dodatkowe godziny'),
+                  ),
+                ],
+                onChanged: (value) {
+                  setDialogState(() {
+                    selectedType = value!;
+                  });
+                },
+              ),
+              const SizedBox(height: 16),
+              DropdownButtonFormField<String>(
+                value: selectedMethod,
+                decoration: const InputDecoration(
+                  labelText: 'Metoda płatności',
+                  border: OutlineInputBorder(),
+                ),
+                items: const [
+                  DropdownMenuItem(value: 'cash', child: Text('Gotówka')),
+                  DropdownMenuItem(value: 'card', child: Text('Karta')),
+                  DropdownMenuItem(value: 'transfer', child: Text('Przelew')),
+                ],
+                onChanged: (value) {
+                  setDialogState(() {
+                    selectedMethod = value!;
+                  });
+                },
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context, false),
+              child: const Text('Anuluj'),
+            ),
+            ElevatedButton(
+              onPressed: () async {
+                final amount = double.tryParse(amountController.text.trim());
+                if (amount == null || amount <= 0) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text('Wprowadź poprawną kwotę')),
+                  );
+                  return;
+                }
+
+                try {
+                  final updatedPayment = Payment(
+                    id: payment.id,
+                    studentId: payment.studentId,
+                    amount: amount,
+                    type: selectedType,
+                    method: selectedMethod,
+                    createdAt: payment.createdAt,
+                    createdBy: payment.createdBy,
+                  );
+
+                  await _paymentService.updatePayment(updatedPayment);
+                  await StudentService().updateCoursePaidStatus(
+                    widget.student.id,
+                  );
+
+                  widget.onStudentUpdated?.call();
+
+                  if (context.mounted) {
+                    Navigator.pop(context, true);
+                  }
+                } catch (e) {
+                  if (context.mounted) {
+                    ScaffoldMessenger.of(
+                      context,
+                    ).showSnackBar(SnackBar(content: Text('Błąd: $e')));
+                  }
+                }
+              },
+              child: const Text('Zapisz'),
+            ),
+          ],
+        ),
+      ),
+    );
+
+    if (result == true) {
+      _loadPayments();
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Płatność zaktualizowana')),
+        );
+      }
+    }
+  }
+
+  // Dialog usuwania płatności
+  Future<void> _showDeletePaymentDialog(Payment payment) async {
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Usuń płatność'),
+        content: Text(
+          'Czy na pewno chcesz usunąć płatność ${payment.amount.toStringAsFixed(2)} zł (${payment.typeLabel})?',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Anuluj'),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(context, true),
+            style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
+            child: const Text('Usuń'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirm == true) {
+      try {
+        await _paymentService.deletePayment(payment.id!);
+        await StudentService().updateCoursePaidStatus(widget.student.id);
+
+        widget.onStudentUpdated?.call();
+        _loadPayments();
+
+        if (mounted) {
+          ScaffoldMessenger.of(
+            context,
+          ).showSnackBar(const SnackBar(content: Text('Płatność usunięta')));
+        }
+      } catch (e) {
+        if (mounted) {
+          ScaffoldMessenger.of(
+            context,
+          ).showSnackBar(SnackBar(content: Text('Błąd: $e')));
+        }
       }
     }
   }

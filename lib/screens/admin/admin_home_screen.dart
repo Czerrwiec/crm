@@ -230,17 +230,16 @@ class _AdminHomeScreenState extends State<AdminHomeScreen> {
                             ),
                           ),
                           subtitle: _buildSubtitle(studentDisplay),
-                          onTap: () async {
-                            await Navigator.push(
+                          onTap: () {
+                            Navigator.push(
                               context,
                               MaterialPageRoute(
-                                builder: (context) =>
-                                    StudentDetailScreen(student: student),
+                                builder: (context) => StudentDetailScreen(
+                                  student: student,
+                                  onStudentUpdated: _loadStudents,
+                                ),
                               ),
                             );
-
-                            // Zawsze odśwież po powrocie
-                            _loadStudents();
                           },
                         ),
                       );
