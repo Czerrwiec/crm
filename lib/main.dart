@@ -2,9 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'screens/auth/login_screen.dart';
-import 'screens/admin/admin_home_screen.dart';
 import 'screens/instructor/instructor_home_screen.dart';
 import 'services/auth_service.dart';
+import 'screens/admin/admin_main_screen.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -26,10 +26,7 @@ class MyApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MaterialApp(
       title: 'CRM',
-      theme: ThemeData(
-        primarySwatch: Colors.blue,
-        useMaterial3: true,
-      ),
+      theme: ThemeData(primarySwatch: Colors.blue, useMaterial3: true),
       home: const AuthGate(),
     );
   }
@@ -58,7 +55,7 @@ class AuthGate extends StatelessWidget {
               final role = roleSnapshot.data;
 
               if (role == 'admin') {
-                return const AdminHomeScreen();
+                return const AdminMainScreen();
               } else if (role == 'instructor') {
                 return const InstructorHomeScreen();
               }

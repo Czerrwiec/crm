@@ -63,4 +63,15 @@ class StudentService {
   ) async {
     await _supabase.from('students').update(data).eq('id', studentId);
   }
+
+  // Dodaj nowego kursanta
+  Future<String> addStudent(Map<String, dynamic> data) async {
+    final response = await _supabase
+        .from('students')
+        .insert(data)
+        .select('id')
+        .single();
+
+    return response['id'] as String;
+  }
 }

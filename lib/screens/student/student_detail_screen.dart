@@ -1174,6 +1174,7 @@ class _StudentDetailScreenState extends State<StudentDetailScreen> {
             : _notesController.text.trim(),
         'course_start_date': courseStartDate?.toIso8601String(),
         'total_hours_driven': totalHoursDriven,
+        'active': _active,
       };
 
       await StudentService().updateStudent(widget.student.id, data);

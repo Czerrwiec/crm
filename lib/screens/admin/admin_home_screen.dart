@@ -4,6 +4,8 @@ import '../../services/student_service.dart';
 import '../../models/student_display.dart';
 import '../../models/list_settings.dart';
 import '../student/student_detail_screen.dart';
+import '../student/add_student_screen.dart';
+import 'settings_screen.dart';
 
 class AdminHomeScreen extends StatefulWidget {
   const AdminHomeScreen({super.key});
@@ -157,19 +159,22 @@ class _AdminHomeScreenState extends State<AdminHomeScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Lista kursantów'),
+        title: const Text('Kursanci!'),
         actions: [
           IconButton(
-            icon: const Icon(Icons.logout),
-            onPressed: () async {
-              await AuthService().signOut();
+            icon: const Icon(Icons.settings),
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (context) => const SettingsScreen()),
+              );
             },
+            tooltip: 'Ustawienia',
           ),
         ],
       ),
       body: Column(
         children: [
-          // Pasek filtrów
           // Pasek filtrów
           Padding(
             padding: const EdgeInsets.all(16),
@@ -320,6 +325,19 @@ class _AdminHomeScreenState extends State<AdminHomeScreen> {
                   ),
           ),
         ],
+      ),
+      floatingActionButton: FloatingActionButton.extended(
+        onPressed: () {
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (context) =>
+                  AddStudentScreen(onStudentAdded: _loadStudents),
+            ),
+          );
+        },
+        icon: const Icon(Icons.person_add),
+        label: const Text('Dodaj kursanta'),
       ),
     );
   }
