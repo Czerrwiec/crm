@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import '../../services/auth_service.dart';
-import '../auth/login_screen.dart';
 
 class SettingsScreen extends StatelessWidget {
   const SettingsScreen({super.key});
@@ -17,17 +16,20 @@ class SettingsScreen extends StatelessWidget {
             subtitle: Text('Zarządzaj swoim profilem'),
           ),
           const Divider(),
+          
           const ListTile(
             leading: Icon(Icons.school),
             title: Text('Dane szkoły jazdy'),
             subtitle: Text('Nazwa, adres, NIP'),
           ),
           const Divider(),
+
           const ListTile(
             leading: Icon(Icons.notifications),
             title: Text('Powiadomienia'),
             subtitle: Text('Ustawienia powiadomień'),
           ),
+
           const Divider(),
           ListTile(
             leading: const Icon(Icons.logout, color: Colors.red),
@@ -36,13 +38,32 @@ class SettingsScreen extends StatelessWidget {
               style: TextStyle(color: Colors.red),
             ),
             onTap: () async {
-              await AuthService().signOut();
+              // Pokaż dialog potwierdzenia
+              final confirm = await showDialog<bool>(
+                context: context,
+                builder: (context) => AlertDialog(
+                  title: const Text('Wyloguj się'),
+                  content: const Text('Czy na pewno chcesz się wylogować?'),
+                  actions: [
+                    TextButton(
+                      onPressed: () => Navigator.pop(context, false),
+                      child: const Text('Anuluj'),
+                    ),
+                    ElevatedButton(
+                      onPressed: () => Navigator.pop(context, true),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.red,
+                      ),
+                      child: const Text('Wyloguj'),
+                    ),
+                  ],
+                ),
+              );
 
-              if (context.mounted) {
-                Navigator.of(context).pushAndRemoveUntil(
-                  MaterialPageRoute(builder: (_) => const LoginScreen()),
-                  (route) => false, // usuwa historię nawigacji
-                );
+              if (confirm == true && context.mounted) {
+                await AuthService().signOut();
+                // Zamknij ekran ustawień
+                Navigator.pop(context);
               }
             },
           ),

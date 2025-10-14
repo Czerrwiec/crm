@@ -27,7 +27,7 @@ class InstructorService {
         ...instructor,
         'students': [
           {'count': (students as List).length},
-        ], 
+        ],
       });
     }
 
@@ -56,7 +56,10 @@ class InstructorService {
     return AppUser.fromJson(response);
   }
 
-  // Dodaj instruktora (najpierw auth, potem users)
+  // TODO: Przenieść na backend (Edge Function z Admin API)
+  // Obecnie signUp() przełącza sesję na nowego użytkownika,
+  // więc admin zostaje wylogowany po dodaniu instruktora.
+  // Można skorzystać z Supabase Edge Function
   Future<String> addInstructor({
     required String email,
     required String password,
@@ -64,7 +67,14 @@ class InstructorService {
     required String lastName,
     String? phone,
   }) async {
-    // Utwórz konto w auth
+    // Zapisz aktualną sesję admina
+    final adminSession = _supabase.auth.currentSession;
+
+    if (adminSession?.refreshToken == null) {
+      throw Exception('Brak aktywnej sesji - zaloguj się ponownie');
+    }
+
+    // Utwórz nowe konto (to przełącza sesję na nowego użytkownika!)
     final authResponse = await _supabase.auth.signUp(
       email: email,
       password: password,
@@ -76,17 +86,27 @@ class InstructorService {
 
     final userId = authResponse.user!.id;
 
-    // Dodaj do tabeli users
-    await _supabase.from('users').insert({
-      'id': userId,
-      'email': email,
-      'role': 'instructor',
-      'first_name': firstName,
-      'last_name': lastName,
-      'phone': phone,
-    });
+    try {
+      // Przywróć sesję admina
+      await _supabase.auth.setSession(adminSession!.refreshToken!);
 
-    return userId;
+      // Teraz RPC wykona się jako admin
+      await _supabase.rpc(
+        'create_instructor',
+        params: {
+          'p_user_id': userId,
+          'p_email': email,
+          'p_first_name': firstName,
+          'p_last_name': lastName,
+          'p_phone': phone,
+        },
+      );
+
+      return userId;
+    } catch (e) {
+      print('Błąd dodawania do users: $e');
+      rethrow;
+    }
   }
 
   // Aktualizuj instruktora
@@ -94,22 +114,17 @@ class InstructorService {
     await _supabase.from('users').update(data).eq('id', id);
   }
 
-  // Usuń instruktora
+  // Usuń instruktora (przez funkcję server-side)
   Future<void> deleteInstructor(String id) async {
-    // Sprawdź czy ma kursantów
-    final studentsCount = await _supabase
-        .from('students')
-        .select('id')
-        .eq('instructor_id', id)
-        .count();
-
-    if (studentsCount.count > 0) {
-      throw Exception(
-        'Nie można usunąć instruktora, który ma przypisanych kursantów',
-      );
+    try {
+      await _supabase.rpc('delete_instructor', params: {'p_user_id': id});
+    } catch (e) {
+      if (e.toString().contains('active students')) {
+        throw Exception(
+          'Nie można usunąć instruktora, który ma przypisanych aktywnych kursantów',
+        );
+      }
+      rethrow;
     }
-
-    // Usuń z users (auth.users zostanie przez CASCADE)
-    await _supabase.from('users').delete().eq('id', id);
   }
 }

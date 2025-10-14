@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import '../../services/auth_service.dart';
 import '../../services/student_service.dart';
 import '../../models/student_display.dart';
 import '../../models/list_settings.dart';
@@ -8,6 +7,7 @@ import '../student/add_student_screen.dart';
 import 'settings_screen.dart';
 
 class AdminHomeScreen extends StatefulWidget {
+
   const AdminHomeScreen({super.key});
 
   @override
@@ -15,9 +15,12 @@ class AdminHomeScreen extends StatefulWidget {
 }
 
 class _AdminHomeScreenState extends State<AdminHomeScreen> {
+
   final _studentService = StudentService();
+
   List<StudentDisplay> _allStudents = [];
   List<StudentDisplay> _filteredStudents = [];
+
   bool _isLoading = true;
   String _searchQuery = '';
 
@@ -159,7 +162,7 @@ class _AdminHomeScreenState extends State<AdminHomeScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Kursanci!'),
+        title: const Text('Kursanci'),
         actions: [
           IconButton(
             icon: const Icon(Icons.settings),

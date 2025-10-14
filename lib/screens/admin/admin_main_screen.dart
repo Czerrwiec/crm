@@ -3,7 +3,6 @@ import 'dashboard_screen.dart';
 import 'admin_home_screen.dart';
 import 'instructors_screen.dart';
 import 'calendar_screen.dart';
-import 'settings_screen.dart';
 
 class AdminMainScreen extends StatefulWidget {
   const AdminMainScreen({super.key});

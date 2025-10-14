@@ -13,6 +13,7 @@ class _LoginScreenState extends State<LoginScreen> {
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
   final _authService = AuthService();
+
   bool _isLoading = false;
 
   @override
@@ -47,6 +48,7 @@ class _LoginScreenState extends State<LoginScreen> {
       );
     }
   } finally {
+    
     if (mounted) {
       setState(() => _isLoading = false);
     }

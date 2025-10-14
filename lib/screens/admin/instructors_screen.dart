@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import '../../services/instructor_service.dart';
 import '../../models/instructor_display.dart';
 import 'settings_screen.dart';
+import '../instructor/instructor_detail_screen.dart';
+import '../instructor/add_instructor_screen.dart';
 
 class InstructorsScreen extends StatefulWidget {
   const InstructorsScreen({super.key});
@@ -144,11 +146,12 @@ class _InstructorsScreenState extends State<InstructorsScreen> {
                             backgroundColor: Colors.blue.shade50,
                           ),
                           onTap: () {
-                            // TODO: Szczegóły instruktora
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              SnackBar(
-                                content: Text(
-                                  'Szczegóły: ${instructor.fullName}',
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (context) => InstructorDetailScreen(
+                                  instructor: instructor,
+                                  onInstructorUpdated: _loadInstructors,
                                 ),
                               ),
                             );
@@ -162,9 +165,12 @@ class _InstructorsScreenState extends State<InstructorsScreen> {
       ),
       floatingActionButton: FloatingActionButton.extended(
         onPressed: () {
-          // TODO: Dodaj instruktora
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Dodawanie instruktora - wkrótce')),
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (context) =>
+                  AddInstructorScreen(onInstructorAdded: _loadInstructors),
+            ),
           );
         },
         icon: const Icon(Icons.person_add),

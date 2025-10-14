@@ -5,11 +5,14 @@ import 'screens/auth/login_screen.dart';
 import 'screens/instructor/instructor_home_screen.dart';
 import 'services/auth_service.dart';
 import 'screens/admin/admin_main_screen.dart';
+import 'package:intl/date_symbol_data_local.dart';
+
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
   await dotenv.load(fileName: ".env");
+  await initializeDateFormatting('pl_PL', null);
 
   await Supabase.initialize(
     url: dotenv.env['SUPABASE_URL']!,
@@ -25,6 +28,7 @@ class MyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
+
       title: 'CRM',
       theme: ThemeData(primarySwatch: Colors.blue, useMaterial3: true),
       home: const AuthGate(),
@@ -42,10 +46,12 @@ class AuthGate extends StatelessWidget {
     return StreamBuilder<AuthState>(
       stream: authService.authStateChanges,
       builder: (context, snapshot) {
+        // Sprawdź czy użytkownik jest zalogowany
         if (snapshot.hasData && snapshot.data?.session != null) {
           return FutureBuilder<String?>(
             future: authService.getUserRole(),
             builder: (context, roleSnapshot) {
+
               if (roleSnapshot.connectionState == ConnectionState.waiting) {
                 return const Scaffold(
                   body: Center(child: CircularProgressIndicator()),
@@ -60,13 +66,34 @@ class AuthGate extends StatelessWidget {
                 return const InstructorHomeScreen();
               }
 
-              return const Scaffold(
-                body: Center(child: Text('Nieznana rola użytkownika')),
+              // Jeśli rola nieznana
+              return Scaffold(
+                body: Center(
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+
+                      const Text(
+                        'Nieznana rola użytkownika',
+                        style: TextStyle(fontSize: 18),
+                      ),
+                      const SizedBox(height: 16),
+
+                      ElevatedButton.icon(
+                        onPressed: () async {
+                          await AuthService().signOut();
+                        },
+                        icon: const Icon(Icons.logout),
+                        label: const Text('Wyloguj się'),
+                      ),
+                    ],
+                  ),
+                ),
               );
             },
           );
         }
-
+        // Nie zalogowany - pokaż ekran logowania
         return const LoginScreen();
       },
     );
