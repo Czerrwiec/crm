@@ -74,4 +74,16 @@ class StudentService {
 
     return response['id'] as String;
   }
+
+  // Pobierz kursantów z filtrowaniem
+  Future<List<Student>> getStudents({bool? activeOnly}) async {
+    var query = _supabase.from('students').select();
+
+    if (activeOnly == true) {
+      query = query.eq('active', true);
+    }
+
+    final response = await query.order('last_name');
+    return (response as List).map((json) => Student.fromJson(json)).toList();
+  }
 }

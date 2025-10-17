@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:table_calendar/table_calendar.dart';
+import 'package:intl/intl.dart';
 import '../../services/auth_service.dart';
 import '../../services/lesson_service.dart';
 import '../../models/lesson.dart';
-import 'package:intl/intl.dart';
+import '../../widgets/week_schedule_view.dart';
+import '../lessons/lesson_from_screen.dart';
 
 class InstructorHomeScreen extends StatefulWidget {
   const InstructorHomeScreen({super.key});
@@ -23,6 +25,9 @@ class _InstructorHomeScreenState extends State<InstructorHomeScreen> {
   List<Lesson> _lessons = [];
   bool _isLoading = true;
   String? _instructorId;
+
+  // Toggle widoku tygodniowego
+  bool _showWeekView = false;
 
   @override
   void initState() {
@@ -90,7 +95,7 @@ class _InstructorHomeScreenState extends State<InstructorHomeScreen> {
           ? const Center(child: CircularProgressIndicator())
           : Column(
               children: [
-                // Kalendarz
+                // Kalendarz miesięczny
                 TableCalendar(
                   firstDay: DateTime.utc(2020, 1, 1),
                   lastDay: DateTime.utc(2030, 12, 31),
@@ -98,7 +103,6 @@ class _InstructorHomeScreenState extends State<InstructorHomeScreen> {
                   locale: 'pl_PL',
                   selectedDayPredicate: (day) => isSameDay(_selectedDay, day),
                   calendarFormat: _calendarFormat,
-
                   daysOfWeekHeight: 40,
                   calendarBuilders: CalendarBuilders(
                     dowBuilder: (context, day) {
@@ -146,27 +150,47 @@ class _InstructorHomeScreenState extends State<InstructorHomeScreen> {
                     formatButtonVisible: true,
                     titleCentered: true,
                     formatButtonShowsNext: false,
-                    titleTextFormatter:
-                        (date, locale) => // ✅ DODAJ formatter nagłówka
-                            DateFormat.yMMMM('pl_PL').format(date),
+                    titleTextFormatter: (date, locale) =>
+                        DateFormat.yMMMM('pl_PL').format(date),
                   ),
-                  // ✅ Polskie nazwy przycisków formatu
                   availableCalendarFormats: const {
                     CalendarFormat.month: 'Miesiąc',
                     CalendarFormat.twoWeeks: '2 tygodnie',
                     CalendarFormat.week: 'Tydzień',
                   },
                 ),
-                const SizedBox(height: 8),
-                // Lista lekcji wybranego dnia
-                Expanded(child: _buildLessonsList()),
+
+                // Divider + Toggle widoku tygodniowego
+                const Divider(height: 1),
+                SwitchListTile(
+                  title: const Text('Widok tygodniowy z godzinami'),
+                  subtitle: const Text('Pokaż szczegółowy rozkład godzin'),
+                  value: _showWeekView,
+                  onChanged: (value) {
+                    setState(() {
+                      _showWeekView = value;
+                    });
+                  },
+                ),
+                const Divider(height: 1),
+
+                // Widok poniżej (lista lub tydzień)
+                Expanded(
+                  child: _showWeekView ? _buildWeekView() : _buildDayList(),
+                ),
               ],
             ),
       floatingActionButton: FloatingActionButton(
         onPressed: () {
-          // TODO: Dodaj lekcję
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Dodawanie lekcji - wkrótce')),
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (context) => LessonFormScreen(
+                instructorId: _instructorId!,
+                preselectedDate: _selectedDay ?? DateTime.now(),
+                onLessonSaved: _loadLessons,
+              ),
+            ),
           );
         },
         child: const Icon(Icons.add),
@@ -174,7 +198,8 @@ class _InstructorHomeScreenState extends State<InstructorHomeScreen> {
     );
   }
 
-  Widget _buildLessonsList() {
+  // Widok listy lekcji wybranego dnia (jak było)
+  Widget _buildDayList() {
     if (_selectedDay == null) {
       return const Center(child: Text('Wybierz dzień'));
     }
@@ -244,6 +269,76 @@ class _InstructorHomeScreenState extends State<InstructorHomeScreen> {
           ),
         );
       },
+    );
+  }
+
+  // Custom widok tygodniowy z godzinami
+  // Custom widok tygodniowy z godzinami
+  Widget _buildWeekView() {
+    if (_selectedDay == null) {
+      return const Center(child: Text('Wybierz dzień'));
+    }
+
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        return WeekScheduleView(
+          selectedDay: _selectedDay!,
+          lessons: _lessons,
+          onLessonTap: (lesson) {
+            _showLessonDetails(lesson);
+          },
+          width: constraints.maxWidth,
+        );
+      },
+    );
+  }
+
+  // Dialog szczegółów lekcji
+  void _showLessonDetails(Lesson lesson) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text('Lekcja ${lesson.startTime} - ${lesson.endTime}'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text('Data: ${DateFormat('dd.MM.yyyy').format(lesson.date)}'),
+            Text('Czas trwania: ${lesson.duration}h'),
+            Text('Status: ${lesson.statusLabel}'),
+            if (lesson.notes != null && lesson.notes!.isNotEmpty)
+              Padding(
+                padding: const EdgeInsets.only(top: 8),
+                child: Text(
+                  'Notatki: ${lesson.notes}',
+                  style: const TextStyle(fontStyle: FontStyle.italic),
+                ),
+              ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Zamknij'),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              Navigator.pop(context);
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => LessonFormScreen(
+                    instructorId: _instructorId!,
+                    lesson: lesson,
+                    onLessonSaved: _loadLessons,
+                  ),
+                ),
+              );
+            },
+            child: const Text('Edytuj'),
+          ),
+        ],
+      ),
     );
   }
 
