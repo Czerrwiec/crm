@@ -2,11 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'screens/auth/login_screen.dart';
-import 'screens/instructor/instructor_home_screen.dart';
 import 'services/auth_service.dart';
 import 'screens/admin/admin_main_screen.dart';
 import 'package:intl/date_symbol_data_local.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
+import 'screens/instructor/instructor_main_screen.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -70,7 +70,7 @@ class AuthGate extends StatelessWidget {
               if (role == 'admin') {
                 return const AdminMainScreen();
               } else if (role == 'instructor') {
-                return const InstructorHomeScreen();
+                return const InstructorMainScreen();
               }
 
               // Jeśli rola nieznana

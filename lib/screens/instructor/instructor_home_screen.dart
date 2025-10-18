@@ -6,6 +6,7 @@ import '../../services/lesson_service.dart';
 import '../../models/lesson.dart';
 import '../../widgets/week_schedule_view.dart';
 import '../lessons/lesson_from_screen.dart';
+import '../../services/student_service.dart';
 
 class InstructorHomeScreen extends StatefulWidget {
   const InstructorHomeScreen({super.key});
@@ -17,14 +18,19 @@ class InstructorHomeScreen extends StatefulWidget {
 class _InstructorHomeScreenState extends State<InstructorHomeScreen> {
   final _lessonService = LessonService();
   final _authService = AuthService();
+  final _studentService = StudentService();
 
   CalendarFormat _calendarFormat = CalendarFormat.month;
   DateTime _focusedDay = DateTime.now();
   DateTime? _selectedDay;
 
   List<Lesson> _lessons = [];
+
   bool _isLoading = true;
+
   String? _instructorId;
+
+  Map<String, String> _studentNames = {};
 
   // Toggle widoku tygodniowego
   bool _showWeekView = false;
@@ -55,8 +61,19 @@ class _InstructorHomeScreenState extends State<InstructorHomeScreen> {
         _instructorId!,
         _focusedDay,
       );
+      final studentIds = lessons
+          .expand((lesson) => lesson.studentIds)
+          .toSet()
+          .toList();
+
+      final students = await _studentService.getStudents();
+      final namesMap = {
+        for (var student in students) student.id: student.fullName,
+      };
+
       setState(() {
         _lessons = lessons;
+        _studentNames = namesMap;
       });
     } catch (e) {
       if (mounted) {
@@ -261,10 +278,7 @@ class _InstructorHomeScreenState extends State<InstructorHomeScreen> {
               ],
             ),
             onTap: () {
-              // TODO: Szczegóły lekcji
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('Szczegóły lekcji - wkrótce')),
-              );
+              _showLessonDetails(lesson);
             },
           ),
         );
@@ -288,6 +302,7 @@ class _InstructorHomeScreenState extends State<InstructorHomeScreen> {
             _showLessonDetails(lesson);
           },
           width: constraints.maxWidth,
+          studentNames: _studentNames,
         );
       },
     );
@@ -306,6 +321,14 @@ class _InstructorHomeScreenState extends State<InstructorHomeScreen> {
             Text('Data: ${DateFormat('dd.MM.yyyy').format(lesson.date)}'),
             Text('Czas trwania: ${lesson.duration}h'),
             Text('Status: ${lesson.statusLabel}'),
+            if (lesson.studentIds.isNotEmpty)
+              Padding(
+                padding: const EdgeInsets.only(top: 8),
+                child: Text(
+                  'Kursanci: ${lesson.studentIds.map((id) => _studentNames[id] ?? "Nieznany").join(", ")}',
+                  style: const TextStyle(fontWeight: FontWeight.w500),
+                ),
+              ),
             if (lesson.notes != null && lesson.notes!.isNotEmpty)
               Padding(
                 padding: const EdgeInsets.only(top: 8),
@@ -321,6 +344,16 @@ class _InstructorHomeScreenState extends State<InstructorHomeScreen> {
             onPressed: () => Navigator.pop(context),
             child: const Text('Zamknij'),
           ),
+          // ✅ DODAJ przycisk Usuń
+          if (lesson.status != 'completed') // Nie usuwamy ukończonych
+            TextButton(
+              onPressed: () {
+                Navigator.pop(context);
+                _showDeleteLessonDialog(lesson);
+              },
+              style: TextButton.styleFrom(foregroundColor: Colors.red),
+              child: const Text('Usuń'),
+            ),
           ElevatedButton(
             onPressed: () {
               Navigator.pop(context);
@@ -352,6 +385,70 @@ class _InstructorHomeScreenState extends State<InstructorHomeScreen> {
         return Colors.grey;
       default:
         return Colors.blue;
+    }
+  }
+
+  // Dialog usuwania lekcji
+  Future<void> _showDeleteLessonDialog(Lesson lesson) async {
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Usuń lekcję'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text('Czy na pewno chcesz usunąć tę lekcję?'),
+            const SizedBox(height: 12),
+            Text(
+              'Data: ${DateFormat('dd.MM.yyyy').format(lesson.date)}',
+              style: const TextStyle(fontWeight: FontWeight.w500),
+            ),
+            Text(
+              'Godzina: ${lesson.startTime} - ${lesson.endTime}',
+              style: const TextStyle(fontWeight: FontWeight.w500),
+            ),
+            if (lesson.studentIds.isNotEmpty)
+              Text(
+                'Kursanci: ${lesson.studentIds.map((id) => _studentNames[id] ?? "Nieznany").join(", ")}',
+                style: const TextStyle(fontWeight: FontWeight.w500),
+              ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Anuluj'),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(context, true),
+            style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
+            child: const Text('Usuń'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirm == true) {
+      try {
+        await _lessonService.deleteLesson(lesson.id);
+        await _loadLessons();
+
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Lekcja usunięta'),
+              backgroundColor: Colors.green,
+            ),
+          );
+        }
+      } catch (e) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Błąd: $e'), backgroundColor: Colors.red),
+          );
+        }
+      }
     }
   }
 }

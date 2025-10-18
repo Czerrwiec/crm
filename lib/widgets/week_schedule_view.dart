@@ -6,7 +6,8 @@ class WeekScheduleView extends StatelessWidget {
   final DateTime selectedDay;
   final List<Lesson> lessons;
   final Function(Lesson) onLessonTap;
-  final double width; 
+  final double width;
+  final Map<String, String> studentNames;
 
   const WeekScheduleView({
     super.key,
@@ -14,6 +15,7 @@ class WeekScheduleView extends StatelessWidget {
     required this.lessons,
     required this.onLessonTap,
     required this.width,
+    required this.studentNames,
   });
 
   @override
@@ -102,8 +104,8 @@ class WeekScheduleView extends StatelessWidget {
   }
 
   Widget _buildScheduleGrid(List<DateTime> weekDays) {
-    const startHour = 7;
-    const endHour = 20;
+    const startHour = 6;
+    const endHour = 23;
     const hourHeight = 80.0;
 
     return SingleChildScrollView(
@@ -260,11 +262,16 @@ class WeekScheduleView extends StatelessWidget {
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
               ),
+              // ✅ DODAJ nazwiska kursantów
               Text(
-                '${lesson.duration}h jazdy',
-                style: const TextStyle(color: Colors.white, fontSize: 10),
+                _getStudentNamesText(lesson),
+                style: const TextStyle(color: Colors.white, fontSize: 9),
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
+              ),
+              Text(
+                '${lesson.duration}h',
+                style: const TextStyle(color: Colors.white70, fontSize: 9),
               ),
             ],
           ),
@@ -283,6 +290,20 @@ class WeekScheduleView extends StatelessWidget {
         return Colors.grey.shade600;
       default:
         return Colors.blue.shade600;
+    }
+  }
+
+  String _getStudentNamesText(Lesson lesson) {
+    if (lesson.studentIds.isEmpty) return 'Brak kursantów';
+
+    final names = lesson.studentIds
+        .map((id) => studentNames[id] ?? 'Nieznany')
+        .toList();
+
+    if (names.length == 1) {
+      return names.first;
+    } else {
+      return '${names.first} (+${names.length - 1})';
     }
   }
 }

@@ -83,7 +83,7 @@ class _LessonFormScreenState extends State<LessonFormScreen> {
     try {
       // Pobierz aktywnych kursantów przypisanych do tego instruktora
       final students = await _studentService.getStudents(activeOnly: true);
-      
+
       final instructorStudents = students
           .where((s) => s.instructorId == widget.instructorId)
           .toList();
@@ -91,6 +91,9 @@ class _LessonFormScreenState extends State<LessonFormScreen> {
       setState(() {
         _availableStudents = instructorStudents;
       });
+      if (widget.lesson == null) {
+        _checkCurrentTimeConflict();
+      }
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(
@@ -99,6 +102,29 @@ class _LessonFormScreenState extends State<LessonFormScreen> {
       }
     } finally {
       setState(() => _isLoadingStudents = false);
+    }
+  }
+
+  Future<void> _checkCurrentTimeConflict() async {
+    final hasConflict = await _lessonService.hasConflict(
+      instructorId: widget.instructorId,
+      date: _selectedDate,
+      startTime:
+          '${_startTime.hour.toString().padLeft(2, '0')}:${_startTime.minute.toString().padLeft(2, '0')}',
+      endTime:
+          '${_endTime.hour.toString().padLeft(2, '0')}:${_endTime.minute.toString().padLeft(2, '0')}',
+    );
+
+    if (hasConflict && mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: const Text(
+            'Uwaga: w tym czasie instruktor ma już zaplanowaną lekcję',
+          ),
+          backgroundColor: Colors.orange,
+          duration: const Duration(seconds: 3),
+        ),
+      );
     }
   }
 
@@ -168,12 +194,36 @@ class _LessonFormScreenState extends State<LessonFormScreen> {
     }
 
     final duration = _calculateDuration();
+
     if (duration <= 0) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text(
             'Godzina zakończenia musi być późniejsza niż rozpoczęcia',
           ),
+        ),
+      );
+      return;
+    }
+
+    final hasConflict = await _lessonService.hasConflict(
+      instructorId: widget.instructorId,
+      date: _selectedDate,
+      startTime:
+          '${_startTime.hour.toString().padLeft(2, '0')}:${_startTime.minute.toString().padLeft(2, '0')}',
+      endTime:
+          '${_endTime.hour.toString().padLeft(2, '0')}:${_endTime.minute.toString().padLeft(2, '0')}',
+      excludeLessonId: widget.lesson?.id, // Przy edycji ignoruj obecną lekcję
+    );
+
+    if (hasConflict) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: const Text(
+            'W tym czasie instruktor ma już zaplanowaną lekcję',
+          ),
+          backgroundColor: Colors.red,
+          duration: const Duration(seconds: 4),
         ),
       );
       return;
