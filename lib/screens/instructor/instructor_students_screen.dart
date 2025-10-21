@@ -22,6 +22,10 @@ class _InstructorStudentsScreenState extends State<InstructorStudentsScreen> {
   String _searchQuery = '';
   String? _instructorId;
 
+  // Nowe filtry
+  bool _showInactive = false; // ✅ Zmienione: domyślnie ukrywamy nieaktywnych
+  bool _showOnlyTheoryPassed = false;
+
   @override
   void initState() {
     super.initState();
@@ -45,7 +49,6 @@ class _InstructorStudentsScreenState extends State<InstructorStudentsScreen> {
     try {
       final response = await _studentService.getStudentsWithInstructors();
 
-      // Filtruj tylko kursantów przypisanych do tego instruktora
       final myStudents = response
           .map((json) => StudentDisplay.fromJson(json))
           .where((sd) => sd.student.instructorId == _instructorId)
@@ -70,6 +73,16 @@ class _InstructorStudentsScreenState extends State<InstructorStudentsScreen> {
     _filteredStudents = _allStudents.where((studentDisplay) {
       final student = studentDisplay.student;
 
+      // ✅ Filtr nieaktywnych (odwrotna logika)
+      if (!_showInactive && !student.active) {
+        return false;
+      }
+
+      // Filtr teoria zdana
+      if (_showOnlyTheoryPassed && !student.theoryPassed) {
+        return false;
+      }
+
       // Wyszukiwanie
       if (_searchQuery.isNotEmpty) {
         final query = _searchQuery.toLowerCase();
@@ -90,8 +103,73 @@ class _InstructorStudentsScreenState extends State<InstructorStudentsScreen> {
     setState(() {});
   }
 
+  Future<void> _showFiltersDialog() async {
+    bool tempInactive = _showInactive; // ✅ Zmienione
+    bool tempTheory = _showOnlyTheoryPassed;
+
+    final result = await showDialog<bool>(
+      context: context,
+      builder: (context) => StatefulBuilder(
+        builder: (context, setDialogState) => AlertDialog(
+          title: const Text('Filtry'),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              CheckboxListTile(
+                title: const Text('Pokaż nieaktywnych'), // ✅ Zmienione
+                value: tempInactive, // ✅ Zmienione
+                onChanged: (value) {
+                  setDialogState(() {
+                    tempInactive = value ?? false; // ✅ Zmienione
+                  });
+                },
+                controlAffinity: ListTileControlAffinity.leading,
+                contentPadding: EdgeInsets.zero,
+              ),
+              CheckboxListTile(
+                title: const Text('Tylko z teorią zdaną'),
+                value: tempTheory,
+                onChanged: (value) {
+                  setDialogState(() {
+                    tempTheory = value ?? false;
+                  });
+                },
+                controlAffinity: ListTileControlAffinity.leading,
+                contentPadding: EdgeInsets.zero,
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context, false),
+              child: const Text('Anuluj'),
+            ),
+            ElevatedButton(
+              onPressed: () {
+                setState(() {
+                  _showInactive = tempInactive; // ✅ Zmienione
+                  _showOnlyTheoryPassed = tempTheory;
+                });
+                Navigator.pop(context, true);
+              },
+              child: const Text('Zastosuj'),
+            ),
+          ],
+        ),
+      ),
+    );
+
+    if (result == true) {
+      _applyFilters();
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
+    final activeFiltersCount =
+        (_showInactive ? 1 : 0) + // ✅ Zmienione
+        (_showOnlyTheoryPassed ? 1 : 0);
+
     return Scaffold(
       appBar: AppBar(
         title: const Text('Moi kursanci'),
@@ -106,22 +184,61 @@ class _InstructorStudentsScreenState extends State<InstructorStudentsScreen> {
       ),
       body: Column(
         children: [
-          // Wyszukiwarka
+          // Wyszukiwarka + Filtry
           Padding(
             padding: const EdgeInsets.all(16),
-            child: TextField(
-              decoration: const InputDecoration(
-                labelText: 'Szukaj',
-                hintText: 'Imię, nazwisko, telefon, PKK',
-                prefixIcon: Icon(Icons.search),
-                border: OutlineInputBorder(),
-              ),
-              onChanged: (value) {
-                setState(() {
-                  _searchQuery = value;
-                  _applyFilters();
-                });
-              },
+            child: Row(
+              children: [
+                Expanded(
+                  child: TextField(
+                    decoration: const InputDecoration(
+                      labelText: 'Szukaj',
+                      hintText: 'Imię, nazwisko, telefon, PKK',
+                      prefixIcon: Icon(Icons.search),
+                      border: OutlineInputBorder(),
+                    ),
+                    onChanged: (value) {
+                      setState(() {
+                        _searchQuery = value;
+                        _applyFilters();
+                      });
+                    },
+                  ),
+                ),
+                const SizedBox(width: 12),
+                OutlinedButton.icon(
+                  onPressed: _showFiltersDialog,
+                  icon: const Icon(Icons.filter_list),
+                  label: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const Text('Filtry'),
+                      if (activeFiltersCount > 0)
+                        Container(
+                          margin: const EdgeInsets.only(left: 8),
+                          padding: const EdgeInsets.all(4),
+                          decoration: BoxDecoration(
+                            color: Colors.blue.shade700,
+                            shape: BoxShape.circle,
+                          ),
+                          constraints: const BoxConstraints(
+                            minWidth: 16,
+                            minHeight: 16,
+                          ),
+                          child: Text(
+                            '$activeFiltersCount',
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 10,
+                              fontWeight: FontWeight.bold,
+                            ),
+                            textAlign: TextAlign.center,
+                          ),
+                        ),
+                    ],
+                  ),
+                ),
+              ],
             ),
           ),
 
@@ -141,7 +258,7 @@ class _InstructorStudentsScreenState extends State<InstructorStudentsScreen> {
                         ),
                         const SizedBox(height: 16),
                         Text(
-                          _searchQuery.isEmpty
+                          _searchQuery.isEmpty && activeFiltersCount == 0
                               ? 'Nie masz przypisanych kursantów'
                               : 'Brak wyników wyszukiwania',
                           style: TextStyle(

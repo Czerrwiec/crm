@@ -22,7 +22,6 @@ class StudentService {
 
   // Aktualizuj status course_paid i ZWRÓĆ zaktualizowanego studenta
   Future<Student> updateCoursePaidStatus(String studentId) async {
-    // Pobierz kursanta
     final studentData = await _supabase
         .from('students')
         .select()
@@ -31,7 +30,6 @@ class StudentService {
 
     final coursePrice = (studentData['course_price'] as num?)?.toDouble() ?? 0;
 
-    // Pobierz sumę płatności za kurs
     final paymentsData = await _supabase
         .from('payments')
         .select('amount')
@@ -45,13 +43,11 @@ class StudentService {
 
     final newCoursePaidStatus = totalPaid >= coursePrice;
 
-    // Aktualizuj course_paid
     await _supabase
         .from('students')
         .update({'course_paid': newCoursePaidStatus})
         .eq('id', studentId);
 
-    // Zwróć zaktualizowanego studenta
     studentData['course_paid'] = newCoursePaidStatus;
     return Student.fromJson(studentData);
   }
@@ -85,5 +81,81 @@ class StudentService {
 
     final response = await query.order('last_name');
     return (response as List).map((json) => Student.fromJson(json)).toList();
+  }
+
+  // NOWA METODA - Zaktualizuj godziny wyjeżdżone dla wielu studentów
+  Future<void> updateStudentsHours(
+    List<String> studentIds,
+    int hoursToAdd,
+  ) async {
+    if (studentIds.isEmpty || hoursToAdd == 0) return;
+
+    // Dla każdego studenta dodaj godziny
+    for (final studentId in studentIds) {
+      try {
+        // Pobierz aktualne godziny
+        final studentData = await _supabase
+            .from('students')
+            .select('total_hours_driven')
+            .eq('id', studentId)
+            .single();
+
+        final currentHours = studentData['total_hours_driven'] as int? ?? 0;
+        final newHours = currentHours + hoursToAdd;
+
+        // Nie pozwól na ujemne godziny
+        if (newHours < 0) {
+          print(
+            '⚠️ Ostrzeżenie: Próba ustawienia ujemnych godzin dla $studentId',
+          );
+          continue;
+        }
+
+        // Zaktualizuj
+        await _supabase
+            .from('students')
+            .update({'total_hours_driven': newHours})
+            .eq('id', studentId);
+
+        print(
+          '✅ Zaktualizowano godziny dla $studentId: $currentHours → $newHours',
+        );
+      } catch (e) {
+        print('❌ Błąd aktualizacji godzin dla $studentId: $e');
+        // Nie przerywamy pętli - próbujemy zaktualizować pozostałych
+      }
+    }
+  }
+
+  // NOWA METODA - Przelicz wszystkie godziny studenta na podstawie lekcji
+  Future<void> recalculateStudentHours(String studentId) async {
+    try {
+      // Pobierz wszystkie ukończone lekcje studenta
+      final lessonsData = await _supabase
+          .from('lessons')
+          .select('duration, student_ids')
+          .eq('status', 'completed')
+          .contains('student_ids', [studentId]);
+
+      int totalHours = 0;
+
+      for (final lesson in lessonsData as List) {
+        final studentIds = List<String>.from(lesson['student_ids'] ?? []);
+        if (studentIds.contains(studentId)) {
+          totalHours += lesson['duration'] as int? ?? 0;
+        }
+      }
+
+      // Zaktualizuj studenta
+      await _supabase
+          .from('students')
+          .update({'total_hours_driven': totalHours})
+          .eq('id', studentId);
+
+      print('✅ Przeliczono godziny dla $studentId: $totalHours');
+    } catch (e) {
+      print('❌ Błąd przeliczania godzin dla $studentId: $e');
+      rethrow;
+    }
   }
 }

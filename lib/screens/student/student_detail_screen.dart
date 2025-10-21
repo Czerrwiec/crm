@@ -11,6 +11,7 @@ import 'package:intl/intl.dart';
 import '../../services/lesson_service.dart';
 import '../../models/lesson.dart';
 import '../../widgets/week_schedule_view.dart';
+import '../../services/auth_service.dart';
 
 class StudentDetailScreen extends StatefulWidget {
   final Student student;
@@ -46,6 +47,7 @@ class _StudentDetailScreenState extends State<StudentDetailScreen> {
   List<AppUser> _instructors = [];
   bool _isLoadingInstructors = true;
   bool _isEditing = false;
+  String? _currentUserRole;
 
   // Kontrolery formularza
   late TextEditingController _firstNameController;
@@ -113,6 +115,7 @@ class _StudentDetailScreenState extends State<StudentDetailScreen> {
     _loadPayments();
     _loadLessons();
     _loadInstructors();
+    _loadUserRole();
   }
 
   void dispose() {
@@ -127,6 +130,17 @@ class _StudentDetailScreenState extends State<StudentDetailScreen> {
     _courseStartDateController.dispose();
     _totalHoursDrivenController.dispose();
     super.dispose();
+  }
+
+  Future<void> _loadUserRole() async {
+    try {
+      final role = await AuthService().getUserRole();
+      setState(() {
+        _currentUserRole = role;
+      });
+    } catch (e) {
+      print('Błąd pobierania roli: $e');
+    }
   }
 
   Future<void> _loadPayments() async {
@@ -255,7 +269,8 @@ class _StudentDetailScreenState extends State<StudentDetailScreen> {
                         'Dane personalne',
                         style: Theme.of(context).textTheme.titleMedium,
                       ),
-                      if (!_isEditing)
+                      // ✅ POKAŻ PRZYCISK TYLKO DLA ADMINA
+                      if (!_isEditing && _currentUserRole == 'admin')
                         ElevatedButton.icon(
                           onPressed: () {
                             setState(() {
@@ -751,6 +766,7 @@ class _StudentDetailScreenState extends State<StudentDetailScreen> {
       ),
       child: Row(
         children: [
+          // Kolumna z datą i autorem
           Expanded(
             flex: 3,
             child: Column(
@@ -764,7 +780,7 @@ class _StudentDetailScreenState extends State<StudentDetailScreen> {
                   '${displayDate.hour.toString().padLeft(2, '0')}:${displayDate.minute.toString().padLeft(2, '0')}',
                   style: TextStyle(fontSize: 11, color: Colors.grey.shade600),
                 ),
-                // Info o autorze
+                // ✅ Info o autorze (zostaje tutaj)
                 FutureBuilder<String?>(
                   future: _paymentService.getCreatedByName(authorId),
                   builder: (context, snapshot) {
@@ -788,6 +804,7 @@ class _StudentDetailScreenState extends State<StudentDetailScreen> {
               ],
             ),
           ),
+          // Kwota
           Expanded(
             flex: 2,
             child: Text(
@@ -795,28 +812,97 @@ class _StudentDetailScreenState extends State<StudentDetailScreen> {
               style: const TextStyle(fontWeight: FontWeight.w500),
             ),
           ),
+          // Typ
           Expanded(flex: 2, child: Text(payment.typeLabel)),
+          // Metoda
           Expanded(flex: 2, child: Text(payment.methodLabel)),
-          // Akcje (edycja/usuwanie)
-          Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              IconButton(
-                icon: const Icon(Icons.edit, size: 18),
-                onPressed: () => _showEditPaymentDialog(payment),
-                tooltip: 'Edytuj',
-                padding: EdgeInsets.zero,
-                constraints: const BoxConstraints(),
-              ),
-              const SizedBox(width: 8),
-              IconButton(
-                icon: Icon(Icons.delete, size: 18, color: Colors.red.shade400),
-                onPressed: () => _showDeletePaymentDialog(payment),
-                tooltip: 'Usuń',
-                padding: EdgeInsets.zero,
-                constraints: const BoxConstraints(),
-              ),
-            ],
+          // ✅ Akcje (edycja/usuwanie) - z kontrolą uprawnień
+          FutureBuilder<bool>(
+            future: _paymentService.canEditPayment(payment.id!),
+            builder: (context, snapshot) {
+              // Podczas ładowania pokaż szare ikony
+              if (snapshot.connectionState == ConnectionState.waiting) {
+                return Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    IconButton(
+                      icon: const Icon(
+                        Icons.edit,
+                        size: 18,
+                        color: Colors.grey,
+                      ),
+                      onPressed: null,
+                      padding: EdgeInsets.zero,
+                      constraints: const BoxConstraints(),
+                    ),
+                    const SizedBox(width: 8),
+                    IconButton(
+                      icon: Icon(Icons.delete, size: 18, color: Colors.grey),
+                      onPressed: null,
+                      padding: EdgeInsets.zero,
+                      constraints: const BoxConstraints(),
+                    ),
+                  ],
+                );
+              }
+
+              final canEdit = snapshot.data ?? false;
+
+              return Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  // Przycisk edycji
+                  IconButton(
+                    icon: Icon(
+                      Icons.edit,
+                      size: 18,
+                      color: canEdit ? null : Colors.grey,
+                    ),
+                    onPressed: canEdit
+                        ? () => _showEditPaymentDialog(payment)
+                        : () {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(
+                                content: Text(
+                                  'Tylko admin może edytować tę płatność',
+                                ),
+                                backgroundColor: Colors.orange,
+                                duration: Duration(seconds: 2),
+                              ),
+                            );
+                          },
+                    tooltip: canEdit ? 'Edytuj' : 'Tylko admin może edytować',
+                    padding: EdgeInsets.zero,
+                    constraints: const BoxConstraints(),
+                  ),
+                  const SizedBox(width: 8),
+                  // Przycisk usuwania
+                  IconButton(
+                    icon: Icon(
+                      Icons.delete,
+                      size: 18,
+                      color: canEdit ? Colors.red.shade400 : Colors.grey,
+                    ),
+                    onPressed: canEdit
+                        ? () => _showDeletePaymentDialog(payment)
+                        : () {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(
+                                content: Text(
+                                  'Tylko admin może usunąć tę płatność',
+                                ),
+                                backgroundColor: Colors.orange,
+                                duration: Duration(seconds: 2),
+                              ),
+                            );
+                          },
+                    tooltip: canEdit ? 'Usuń' : 'Tylko admin może usunąć',
+                    padding: EdgeInsets.zero,
+                    constraints: const BoxConstraints(),
+                  ),
+                ],
+              );
+            },
           ),
         ],
       ),
