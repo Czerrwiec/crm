@@ -363,7 +363,7 @@ class _AdminHomeScreenState extends State<AdminHomeScreen> {
       lines.add('PKK: ${student.pkkNumber}');
     }
     if (_selectedColumns.contains(DisplayColumn.hoursDriven)) {
-      lines.add('🚗 ${student.totalHoursDriven}h');
+     lines.add('🚗 ${student.totalHoursDrivenFormatted}');
     }
     if (_selectedColumns.contains(DisplayColumn.instructor) &&
         studentDisplay.instructorName != null) {

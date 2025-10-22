@@ -323,7 +323,7 @@ class _InstructorStudentsScreenState extends State<InstructorStudentsScreen> {
                                       ),
                                     ),
                                   Text(
-                                    '${student.totalHoursDriven}h wyjeżdżonych',
+                                    '${student.totalHoursDrivenFormatted} wyjeżdżonych',
                                     style: TextStyle(
                                       fontSize: 12,
                                       color: Colors.grey.shade600,

@@ -83,10 +83,10 @@ class StudentService {
     return (response as List).map((json) => Student.fromJson(json)).toList();
   }
 
-  // NOWA METODA - Zaktualizuj godziny wyjeżdżone dla wielu studentów
+  // ✅ ZMIENIONE - Zaktualizuj godziny wyjeżdżone dla wielu studentów (double)
   Future<void> updateStudentsHours(
     List<String> studentIds,
-    int hoursToAdd,
+    double hoursToAdd,
   ) async {
     if (studentIds.isEmpty || hoursToAdd == 0) return;
 
@@ -100,7 +100,8 @@ class StudentService {
             .eq('id', studentId)
             .single();
 
-        final currentHours = studentData['total_hours_driven'] as int? ?? 0;
+        final currentHours =
+            (studentData['total_hours_driven'] as num?)?.toDouble() ?? 0.0;
         final newHours = currentHours + hoursToAdd;
 
         // Nie pozwól na ujemne godziny
@@ -127,7 +128,7 @@ class StudentService {
     }
   }
 
-  // NOWA METODA - Przelicz wszystkie godziny studenta na podstawie lekcji
+  // ✅ ZMIENIONE - Przelicz wszystkie godziny studenta na podstawie lekcji (double)
   Future<void> recalculateStudentHours(String studentId) async {
     try {
       // Pobierz wszystkie ukończone lekcje studenta
@@ -137,12 +138,12 @@ class StudentService {
           .eq('status', 'completed')
           .contains('student_ids', [studentId]);
 
-      int totalHours = 0;
+      double totalHours = 0.0;
 
       for (final lesson in lessonsData as List) {
         final studentIds = List<String>.from(lesson['student_ids'] ?? []);
         if (studentIds.contains(studentId)) {
-          totalHours += lesson['duration'] as int? ?? 0;
+          totalHours += (lesson['duration'] as num?)?.toDouble() ?? 0.0;
         }
       }
 

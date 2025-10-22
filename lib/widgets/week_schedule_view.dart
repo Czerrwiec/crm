@@ -253,7 +253,7 @@ class WeekScheduleView extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
-                '${lesson.startTime} - ${lesson.endTime}',
+                '${lesson.startTimeFormatted} - ${lesson.endTimeFormatted}',
                 style: const TextStyle(
                   color: Colors.white,
                   fontSize: 11,
@@ -270,7 +270,7 @@ class WeekScheduleView extends StatelessWidget {
                 overflow: TextOverflow.ellipsis,
               ),
               Text(
-                '${lesson.duration}h',
+                '${lesson.durationFormatted}',
                 style: const TextStyle(color: Colors.white70, fontSize: 9),
               ),
             ],

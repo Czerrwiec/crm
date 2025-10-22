@@ -11,8 +11,8 @@ class Student {
   final bool theoryPassed;
   final bool internalExamPassed;
   final bool coursePaid;
-  final int extraHours;
-  final int totalHoursDriven;
+  final double extraHours;
+  final double totalHoursDriven;
   final DateTime? courseStartDate;
   final bool active;
   final String? notes;
@@ -34,8 +34,8 @@ class Student {
     this.theoryPassed = false,
     this.internalExamPassed = false,
     this.coursePaid = false,
-    this.extraHours = 0,
-    this.totalHoursDriven = 0,
+    this.extraHours = 0.0,
+    this.totalHoursDriven = 0.0,
     this.courseStartDate,
     this.active = true,
     this.notes,
@@ -61,8 +61,8 @@ class Student {
       theoryPassed: json['theory_passed'] ?? false,
       internalExamPassed: json['internal_exam_passed'] ?? false,
       coursePaid: json['course_paid'] ?? false,
-      extraHours: json['extra_hours'] ?? 0,
-      totalHoursDriven: json['total_hours_driven'] ?? 0,
+      extraHours: (json['extra_hours'] as num?)?.toDouble() ?? 0.0,
+      totalHoursDriven: (json['total_hours_driven'] as num?)?.toDouble() ?? 0.0,
       courseStartDate: json['course_start_date'] != null
           ? DateTime.parse(json['course_start_date'])
           : null,
@@ -73,7 +73,7 @@ class Student {
       coursePrice: (json['course_price'] as num?)?.toDouble() ?? 3200.00,
       city: json['city'],
       isSupplementaryCourse: json['is_supplementary_course'] ?? false,
-      car: json['car'] ?? false
+      car: json['car'] ?? false,
     );
   }
 
@@ -96,5 +96,35 @@ class Student {
   double calculateOutstanding(List<Payment> payments) {
     final paid = calculateCoursePaid(payments);
     return coursePrice - paid;
+  }
+
+  // String get totalHoursDrivenFormatted {
+  //   // Round to nearest 0.25 (15 minutes)
+  //   final rounded = (totalHoursDriven * 4).round() / 4;
+
+  //   if (rounded == rounded.roundToDouble()) {
+  //     // Whole number (1.0, 2.0)
+  //     return '${rounded.toInt()}h';
+  //   } else {
+  //     // Decimal places (1.25, 1.5, 1.75)
+  //     return '${rounded.toStringAsFixed(2).replaceAll(RegExp(r'0+$'), '').replaceAll(RegExp(r'\.$'), '')}h';
+  //   }
+  // }
+
+  //nowa metoda
+
+  String get totalHoursDrivenFormatted {
+    // Zaokrąglij do najbliższego 0.25 (15 minut)
+    final rounded = (totalHoursDriven * 4).round() / 4;
+
+    // Oblicz godziny i minuty
+    final hours = rounded.floor();
+    final minutes = ((rounded - hours) * 60).round();
+
+    // Formatuj wynik
+    if (minutes == 0) {
+      return '${hours}h';
+    }
+    return '${hours}h${minutes}m';
   }
 }

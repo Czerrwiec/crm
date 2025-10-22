@@ -322,7 +322,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
               child: const Icon(Icons.drive_eta, color: Colors.white),
             ),
             title: Text(
-              '${lesson.startTime} - ${lesson.endTime}',
+              '${lesson.startTimeFormatted} - ${lesson.endTimeFormatted}',
               style: const TextStyle(fontWeight: FontWeight.bold),
             ),
             subtitle: Column(
@@ -334,7 +334,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
                         .map((id) => _studentNames[id] ?? 'Nieznany')
                         .join(', '),
                   ),
-                Text('${lesson.duration}h jazdy'),
+                Text('${lesson.durationFormatted} jazdy'),
                 Text(
                   lesson.statusLabel,
                   style: TextStyle(
@@ -379,13 +379,13 @@ class _CalendarScreenState extends State<CalendarScreen> {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        title: Text('Lekcja ${lesson.startTime} - ${lesson.endTime}'),
+        title: Text('Lekcja ${lesson.startTimeFormatted} - ${lesson.endTimeFormatted}'),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text('Data: ${DateFormat('dd.MM.yyyy').format(lesson.date)}'),
-            Text('Czas trwania: ${lesson.duration}h'),
+            Text('Czas trwania: ${lesson.durationFormatted}'),
             Text('Status: ${lesson.statusLabel}'),
             if (lesson.studentIds.isNotEmpty)
               Padding(
@@ -457,7 +457,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
               style: const TextStyle(fontWeight: FontWeight.w500),
             ),
             Text(
-              'Godzina: ${lesson.startTime} - ${lesson.endTime}',
+              'Godzina: ${lesson.startTimeFormatted} - ${lesson.endTimeFormatted}',
               style: const TextStyle(fontWeight: FontWeight.w500),
             ),
           ],

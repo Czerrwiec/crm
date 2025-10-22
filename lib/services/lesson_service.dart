@@ -60,7 +60,7 @@ class LessonService {
       if (newStatus == 'completed' && oldStatus != 'completed') {
         // Zmiana na completed - DODAJ godziny
         print(
-          '📚 Dodaję ${lesson.duration}h dla studentów: ${lesson.studentIds}',
+          '📚 Dodaję ${lesson.durationFormatted}h dla studentów: ${lesson.studentIds}',
         );
         await _studentService.updateStudentsHours(
           lesson.studentIds,
@@ -69,7 +69,7 @@ class LessonService {
       } else if (oldStatus == 'completed' && newStatus != 'completed') {
         // Zmiana z completed na inny - ODEJMIJ godziny
         print(
-          '📚 Odejmuję ${lesson.duration}h dla studentów: ${lesson.studentIds}',
+          '📚 Odejmuję ${lesson.durationFormatted}h dla studentów: ${lesson.studentIds}',
         );
         await _studentService.updateStudentsHours(
           lesson.studentIds,
@@ -87,7 +87,7 @@ class LessonService {
       final removedStudents = oldStudentIds.difference(newStudentIds).toList();
       if (removedStudents.isNotEmpty) {
         print(
-          '📚 Odejmuję ${lesson.duration}h dla usuniętych: $removedStudents',
+          '📚 Odejmuję ${lesson.durationFormatted}h dla usuniętych: $removedStudents',
         );
         await _studentService.updateStudentsHours(
           removedStudents,
@@ -98,7 +98,7 @@ class LessonService {
       // Studenci dodani do lekcji - dodaj im godziny
       final addedStudents = newStudentIds.difference(oldStudentIds).toList();
       if (addedStudents.isNotEmpty) {
-        print('📚 Dodaję ${lesson.duration}h dla dodanych: $addedStudents');
+        print('📚 Dodaję ${lesson.durationFormatted}h dla dodanych: $addedStudents');
         await _studentService.updateStudentsHours(
           addedStudents,
           lesson.duration,
@@ -134,7 +134,7 @@ class LessonService {
     // Jeśli była completed, odejmij godziny
     if (lesson.status == 'completed') {
       print(
-        '📚 Usuwam lekcję - odejmuję ${lesson.duration}h dla ${lesson.studentIds}',
+        '📚 Usuwam lekcję - odejmuję ${lesson.durationFormatted}h dla ${lesson.studentIds}',
       );
       await _studentService.updateStudentsHours(
         lesson.studentIds,

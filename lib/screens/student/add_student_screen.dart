@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../../models/app_user.dart';
 import '../../services/instructor_service.dart';
 import '../../services/student_service.dart';
+import 'package:flutter/services.dart';
 
 class AddStudentScreen extends StatefulWidget {
   final VoidCallback? onStudentAdded;
@@ -372,8 +373,17 @@ class _AddStudentScreenState extends State<AddStudentScreen> {
                               border: OutlineInputBorder(),
                               prefixIcon: Icon(Icons.access_time),
                               suffixText: 'h',
+                              helperText: 'Np. 1.25, 1.5, 1.75, 2',
                             ),
-                            keyboardType: TextInputType.number,
+                            keyboardType: const TextInputType.numberWithOptions(
+                              decimal: true,
+                            ),
+                            inputFormatters: [
+                              // Akceptuj cyfry i kropkę, max 2 miejsca po przecinku
+                              FilteringTextInputFormatter.allow(
+                                RegExp(r'^\d*\.?\d{0,2}'),
+                              ),
+                            ],
                           ),
                         ),
                       ],

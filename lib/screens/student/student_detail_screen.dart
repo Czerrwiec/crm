@@ -552,11 +552,16 @@ class _StudentDetailScreenState extends State<StudentDetailScreen> {
                             border: OutlineInputBorder(),
                             prefixIcon: Icon(Icons.access_time),
                             suffixText: 'h',
+                            helperText: 'Np. 1.25, 1.5, 1.75, 2',
                           ),
-                          keyboardType: TextInputType.number,
+                          keyboardType: const TextInputType.numberWithOptions(
+                            decimal: true,
+                          ),
                           inputFormatters: [
-                            FilteringTextInputFormatter
-                                .digitsOnly, // Przyjmuje tylko cyfry
+                            // ✅ Akceptuj cyfry i kropkę, max 2 miejsca po przecinku
+                            FilteringTextInputFormatter.allow(
+                              RegExp(r'^\d*\.?\d{0,2}'),
+                            ),
                           ],
                           enabled: _isEditing,
                           style: TextStyle(
@@ -1051,7 +1056,7 @@ class _StudentDetailScreenState extends State<StudentDetailScreen> {
             subtitle: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text('${lesson.duration}h jazdy'),
+                Text('${lesson.durationFormatted} jazdy'),
                 Text(
                   lesson.statusLabel,
                   style: TextStyle(
@@ -1111,7 +1116,7 @@ class _StudentDetailScreenState extends State<StudentDetailScreen> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text('Data: ${DateFormat('dd.MM.yyyy').format(lesson.date)}'),
-            Text('Czas trwania: ${lesson.duration}h'),
+            Text('Czas trwania: ${lesson.durationFormatted}'),
             Text('Status: ${lesson.statusLabel}'),
             if (lesson.notes != null && lesson.notes!.isNotEmpty)
               Padding(
@@ -1521,7 +1526,7 @@ class _StudentDetailScreenState extends State<StudentDetailScreen> {
     }
 
     final totalHoursDriven =
-        int.tryParse(_totalHoursDrivenController.text.trim()) ?? 0;
+        double.tryParse(_totalHoursDrivenController.text.trim()) ?? 0.0;
 
     try {
       final data = {

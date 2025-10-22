@@ -258,7 +258,7 @@ class _InstructorHomeScreenState extends State<InstructorHomeScreen> {
             subtitle: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text('${lesson.duration}h jazdy'),
+                Text('${lesson.durationFormatted} jazdy'),
                 Text(
                   lesson.statusLabel,
                   style: TextStyle(
@@ -319,7 +319,7 @@ class _InstructorHomeScreenState extends State<InstructorHomeScreen> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text('Data: ${DateFormat('dd.MM.yyyy').format(lesson.date)}'),
-            Text('Czas trwania: ${lesson.duration}h'),
+            Text('Czas trwania: ${lesson.durationFormatted}'),
             Text('Status: ${lesson.statusLabel}'),
             if (lesson.studentIds.isNotEmpty)
               Padding(

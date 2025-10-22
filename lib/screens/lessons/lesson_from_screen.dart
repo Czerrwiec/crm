@@ -175,10 +175,30 @@ class _LessonFormScreenState extends State<LessonFormScreen> {
     }
   }
 
-  int _calculateDuration() {
+  double _calculateDuration() {
     final startMinutes = _startTime.hour * 60 + _startTime.minute;
     final endMinutes = _endTime.hour * 60 + _endTime.minute;
-    return ((endMinutes - startMinutes) / 60).round();
+    final durationMinutes = endMinutes - startMinutes;
+
+    // Konwertuj minuty na godziny z dokładnością 15 min (0.25h)
+    // 15 min = 0.25h, 30 min = 0.5h, 45 min = 0.75h, 60 min = 1.0h
+    final hours = durationMinutes / 60.0;
+
+    // Zaokrąglij do najbliższego 0.25 (15 minut)
+    return (hours * 4).round() / 4;
+  }
+
+  String _formatDuration(double hours) {
+    // Oblicz godziny i minuty
+    final rounded = (hours * 4).round() / 4;
+    final intHours = rounded.floor();
+    final minutes = ((rounded - intHours) * 60).round();
+
+    // Formatuj wynik
+    if (minutes == 0) {
+      return '${intHours}h';
+    }
+    return '${intHours}h${minutes}m';
   }
 
   Future<void> _saveLesson() async {
@@ -359,7 +379,7 @@ class _LessonFormScreenState extends State<LessonFormScreen> {
                     ),
                     const SizedBox(height: 8),
                     Text(
-                      'Czas trwania: ${_calculateDuration()}h',
+                      'Czas trwania: ${_formatDuration(_calculateDuration())}',
                       style: TextStyle(
                         fontSize: 14,
                         color: Colors.grey.shade700,
